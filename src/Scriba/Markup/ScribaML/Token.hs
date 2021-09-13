@@ -10,6 +10,7 @@
 -- document.
 module Scriba.Markup.ScribaML.Token where
 
+import qualified Data.List as List
 import Data.Text (Text)
 import qualified Data.Text as T
 
@@ -24,7 +25,9 @@ data Token
   | -- | spaces not at the beginning of a line
     LineSpace !Int
   | LineComment !Text
-  | Verbatim !Line ![VerbatimLine]
+  | -- | span of verbatim text, also recording the number of the line on which
+    -- it ends
+    Verbatim !Line ![VerbatimLine]
   | BackslashTag !Text
   | BackslashAnon
   | AmpTag !Text
@@ -90,6 +93,36 @@ renderToken Lbracket = "["
 renderToken Rbracket = "]"
 renderToken Equals = "="
 renderToken Comma = ","
+
+-- | Returns the number of source characters represented by a particular
+-- 'Token'. Satisfies
+--
+-- @
+-- 'tokenLength' = 'T.length' . 'renderToken'
+-- @
+tokenLength :: Token -> Int
+tokenLength (PrintingText t) = T.length t
+tokenLength (Escape _) = 2
+tokenLength (Indent _ ls n) = sum ls' + n
+  where
+    ls' = List.intersperse 1 $ T.length <$> ls
+tokenLength (LineSpace n) = n
+tokenLength (LineComment t) = 2 + T.length t
+tokenLength (Verbatim _ ls) = 4 + sum (List.intersperse 1 $ go <$> ls)
+  where
+    verbLen (VerbatimLineText t) = T.length t
+    verbLen VerbatimBacktick = 2
+    go (VerbatimLine n ts) = n + sum (verbLen <$> ts)
+tokenLength (BackslashTag t) = 1 + T.length t
+tokenLength BackslashAnon = 2
+tokenLength (AmpTag t) = 1 + T.length t
+tokenLength AmpAnon = 2
+tokenLength Lbrace = 1
+tokenLength Rbrace = 1
+tokenLength Lbracket = 1
+tokenLength Rbracket = 1
+tokenLength Equals = 1
+tokenLength Comma = 1
 
 -- | The line that a 'BlankLine' or 'Indent' token starts, or the line
 -- on which a 'Comment' ends
