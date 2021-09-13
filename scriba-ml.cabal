@@ -1,0 +1,30 @@
+cabal-version:       2.4
+name:                scriba
+version:             0.0.1
+synopsis:            Markup language, publishing, and library system tools
+license:             BSD-2-Clause
+license-file:        LICENSE
+author:              Christian Despres
+maintainer:          Christian Despres <christian.j.j.despres@gmail.com>
+copyright:           Copyright 2021 Christian Despres
+category:            Text
+extra-source-files:
+  CHANGELOG.md
+  README.md
+
+common base
+  default-language: Haskell2010
+  ghc-options: -Wall -Wextra
+  build-depends: base >=4.13 && <5
+
+library
+  import: base
+  hs-source-dirs: src
+  build-depends:
+    base >= 4.13 && < 4.16,
+    text,
+    megaparsec,
+    mtl,
+  exposed-modules:
+    Scriba.Markup.ScribaML.Lexer
+    Scriba.Markup.ScribaML.Token
