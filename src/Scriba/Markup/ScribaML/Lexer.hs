@@ -54,7 +54,8 @@ newtype Lex a = Lex {unLex :: S.StateT LexState (Parsec Void Text) a}
       S.MonadState LexState
     )
 
--- | The 'LexState' keeps track of the current line number
+-- | The 'LexState' keeps track of the current line number and the current
+-- lexing mode.
 data LexState = LexState
   { lexLine :: !Line,
     lexMode :: !LexMode
@@ -82,14 +83,14 @@ getLexLine = S.gets lexLine
 -- | Increment the 'Line' and return the /new/ state
 incLexLine :: Lex Line
 incLexLine = do
-  S.modify (\(LexState n x) -> LexState (n + 1) x)
+  S.modify $ \(LexState n x) -> LexState (n + 1) x
   S.gets lexLine
 
 getLexMode :: Lex LexMode
 getLexMode = S.gets lexMode
 
 setLexMode :: LexMode -> Lex ()
-setLexMode m = S.modify (\(LexState n _) -> LexState n m)
+setLexMode m = S.modify $ \(LexState n _) -> LexState n m
 
 -- | Parse a single token. Note that this parser has no way of knowing whether
 -- or not it is at the beginning of a line, and so it will always parse an

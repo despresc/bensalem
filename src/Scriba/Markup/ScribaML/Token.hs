@@ -40,6 +40,10 @@ data Token
   | Rbracket
   | Equals
   | Comma
+  | -- | virtual token indicating a new indentation context
+    IncIndent
+  | -- | virtual token indicating the closing of a single indentation context
+    DecIndent
   deriving (Eq, Ord, Show)
 
 -- | One of the recognized escape sequences in plain (not verbatim) text. These
@@ -85,6 +89,8 @@ renderToken Lbracket = "["
 renderToken Rbracket = "]"
 renderToken Equals = "="
 renderToken Comma = ","
+renderToken IncIndent = ""
+renderToken DecIndent = ""
 
 renderVerbatimLineText :: [VerbatimLineText] -> Text
 renderVerbatimLineText = T.concat . fmap go
@@ -119,6 +125,8 @@ tokenLength Lbracket = 1
 tokenLength Rbracket = 1
 tokenLength Equals = 1
 tokenLength Comma = 1
+tokenLength IncIndent = 0
+tokenLength DecIndent = 0
 
 verbatimLineTextLength :: [VerbatimLineText] -> Int
 verbatimLineTextLength = sum . fmap go
