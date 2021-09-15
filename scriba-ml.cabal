@@ -21,10 +21,11 @@ library
   import: base
   hs-source-dirs: src
   build-depends:
-    base >= 4.13 && < 4.16,
-    text,
+    containers,
     megaparsec,
     mtl,
+    text,
   exposed-modules:
     Scriba.Markup.ScribaML.Lexer
+    Scriba.Markup.ScribaML.Syntax
     Scriba.Markup.ScribaML.Token
