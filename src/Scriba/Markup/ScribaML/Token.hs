@@ -25,11 +25,13 @@ data Token
   | -- | spaces not at the beginning of a line
     LineSpace !Int
   | LineComment !Text
-  | -- | span of verbatim text, also recording the number of the line on which
-    -- it ends
-    Verbatim !Line ![VerbatimLine]
   | BackslashTag !Text
   | BackslashAnon
+  | -- | start of a verbatim span, then the first run of verbatim line text
+    StartVerbatim ![VerbatimLineText]
+  | -- | newline, then subsequent indentation and verbatim text
+    VerbatimLine !Line !Indent ![VerbatimLineText]
+  | EndVerbatim
   | AmpTag !Text
   | AmpAnon
   | Lbrace
@@ -51,14 +53,6 @@ data EscSequence
   | EscRbracket
   deriving (Eq, Ord, Show)
 
--- | A line of verbatim text is an initial sequence of space indentation
--- followed by a sequence of 'VerbatimLineText'
-data VerbatimLine = VerbatimLine
-  { verbIndent :: !Indent,
-    verbLine :: ![VerbatimLineText]
-  }
-  deriving (Eq, Ord, Show)
-
 -- | Verbatim line text is either the sequence @\`\`@, interpreted as a single
 -- @'`'@, or a sequence of characters other than the character @\'`'@
 data VerbatimLineText
@@ -78,13 +72,11 @@ renderToken (Escape EscRbracket) = "\\]"
 renderToken (Indent _ ls n) = "\n" <> T.concat ls <> T.replicate n " "
 renderToken (LineSpace n) = T.replicate n " "
 renderToken (LineComment t) = "\\%" <> t
-renderToken (Verbatim _ ls) = "\\`" <> T.intercalate "\n" (go <$> ls) <> "`/"
-  where
-    fromLineText (VerbatimLineText t) = t
-    fromLineText VerbatimBacktick = "``"
-    go (VerbatimLine n ts) = T.replicate n " " <> T.concat (fromLineText <$> ts)
 renderToken (BackslashTag t) = "\\" <> t
 renderToken BackslashAnon = "\\."
+renderToken (StartVerbatim ts) = "\\`" <> renderVerbatimLineText ts
+renderToken (VerbatimLine _ i ts) = "\n" <> T.replicate i " " <> renderVerbatimLineText ts
+renderToken EndVerbatim = "`/"
 renderToken (AmpTag t) = "\\" <> t
 renderToken AmpAnon = "&."
 renderToken Lbrace = "{"
@@ -93,6 +85,12 @@ renderToken Lbracket = "["
 renderToken Rbracket = "]"
 renderToken Equals = "="
 renderToken Comma = ","
+
+renderVerbatimLineText :: [VerbatimLineText] -> Text
+renderVerbatimLineText = T.concat . fmap go
+  where
+    go (VerbatimLineText t) = t
+    go VerbatimBacktick = "``"
 
 -- | Returns the number of source characters represented by a particular
 -- 'Token'. Satisfies
@@ -103,18 +101,16 @@ renderToken Comma = ","
 tokenLength :: Token -> Int
 tokenLength (PrintingText t) = T.length t
 tokenLength (Escape _) = 2
-tokenLength (Indent _ ls n) = sum ls' + n
+tokenLength (Indent _ ls n) = 1 + sum ls' + n
   where
     ls' = List.intersperse 1 $ T.length <$> ls
 tokenLength (LineSpace n) = n
 tokenLength (LineComment t) = 2 + T.length t
-tokenLength (Verbatim _ ls) = 4 + sum (List.intersperse 1 $ go <$> ls)
-  where
-    verbLen (VerbatimLineText t) = T.length t
-    verbLen VerbatimBacktick = 2
-    go (VerbatimLine n ts) = n + sum (verbLen <$> ts)
 tokenLength (BackslashTag t) = 1 + T.length t
 tokenLength BackslashAnon = 2
+tokenLength (StartVerbatim ts) = 2 + verbatimLineTextLength ts
+tokenLength (VerbatimLine _ i ts) = 1 + i + verbatimLineTextLength ts
+tokenLength EndVerbatim = 2
 tokenLength (AmpTag t) = 1 + T.length t
 tokenLength AmpAnon = 2
 tokenLength Lbrace = 1
@@ -123,6 +119,12 @@ tokenLength Lbracket = 1
 tokenLength Rbracket = 1
 tokenLength Equals = 1
 tokenLength Comma = 1
+
+verbatimLineTextLength :: [VerbatimLineText] -> Int
+verbatimLineTextLength = sum . fmap go
+  where
+    go (VerbatimLineText t) = T.length t
+    go VerbatimBacktick = 2
 
 -- | The line that a 'BlankLine' or 'Indent' token starts, or the line
 -- on which a 'Comment' ends

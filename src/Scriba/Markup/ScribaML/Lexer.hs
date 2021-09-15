@@ -40,11 +40,6 @@ import Text.Megaparsec.Char
 - attach "while parsing the verbatim span at ..." messages to improve errors in
   case of runaway verbatim spans
 
-- may want to lex verbatim spans with multiple tokens, in a line-oriented
-  fashion. could be necessary for nicer parse errors later on. would require
-  more in 'LexState', I imagine, unless we call the current tokens "raw tokens"
-  and expand them into another type a later pass (which could also insert
-  INDENT/DEINDENT tokens if we were so inclined)
 -}
 
 -- | A 'Parsec' monad with added 'LexState'
@@ -60,16 +55,22 @@ newtype Lex a = Lex {unLex :: S.StateT LexState (Parsec Void Text) a}
     )
 
 -- | The 'LexState' keeps track of the current line number
-newtype LexState = LexState
-  { lexLine :: Line
+data LexState = LexState
+  { lexLine :: !Line,
+    lexMode :: !LexMode
   }
   deriving (Eq, Ord, Show)
 
--- | Run a 'Lex' action at line 1
+data LexMode
+  = LexPlain
+  | LexVerbatim
+  deriving (Eq, Ord, Show)
+
+-- | Run a 'Lex' action at line 1 in the initial plain mode
 runLex :: Lex a -> Parsec Void Text a
 runLex = fmap fst . go . S.runStateT . unLex
   where
-    go f = f $ LexState 0
+    go f = f $ LexState 0 LexPlain
 
 instance (a ~ Text) => IsString (Lex a) where
   fromString = Lex . S.lift . fromString
@@ -81,25 +82,37 @@ getLexLine = S.gets lexLine
 -- | Increment the 'Line' and return the /new/ state
 incLexLine :: Lex Line
 incLexLine = do
-  S.modify (\(LexState n) -> LexState $ n + 1)
+  S.modify (\(LexState n x) -> LexState (n + 1) x)
   S.gets lexLine
+
+getLexMode :: Lex LexMode
+getLexMode = S.gets lexMode
+
+setLexMode :: LexMode -> Lex ()
+setLexMode m = S.modify (\(LexState n _) -> LexState n m)
 
 -- | Parse a single token. Note that this parser has no way of knowing whether
 -- or not it is at the beginning of a line, and so it will always parse an
 -- initial run of space characters as 'LineSpace' and not 'Indent'.
 token :: Lex Token
-token =
-  printingText
-    <|> indent
-    <|> lineSpace
-    <|> backslashTok
-    <|> ampTok
-    <|> lbrace
-    <|> rbrace
-    <|> lbracket
-    <|> rbracket
-    <|> equals
-    <|> comma
+token = do
+  m <- getLexMode
+  case m of
+    LexPlain ->
+      printingText
+        <|> indent
+        <|> lineSpace
+        <|> backslashTok
+        <|> ampTok
+        <|> lbrace
+        <|> rbrace
+        <|> lbracket
+        <|> rbracket
+        <|> equals
+        <|> comma
+    LexVerbatim ->
+      verbatimLine
+        <|> endVerbatim
   where
     lbrace = "{" $> Lbrace
     rbrace = "}" $> Rbrace
@@ -127,7 +140,7 @@ backslashTok = "\\" >> tok
         <|> backslashTag
         <|> backslashAnon
         <|> lineComment
-        <|> verbatim
+        <|> startVerbatim
 
 -- | Parse an escape sequence in plain (not verbatim) text, assuming that we
 -- have already parsed the initial @\\@. The recognized escape sequences are
@@ -163,35 +176,38 @@ backslashAnon = "." $> BackslashAnon
 lineComment :: Lex Token
 lineComment = "%" >> LineComment <$> takeWhileP Nothing (/= '\n')
 
--- | Parse a verbatim span, assuming that we have already parsed the initial
--- @\\@. A verbatim span looks like @\\`@ followed by a sequence of verbatim
--- text, ending in @`/@. The verbatim text, in turn, is either the sequence
--- @\`\`@, interpreted as the single character @\'`\'@, or text not containing
--- the character @\'`\'@.
-verbatim :: Lex Token
-verbatim = do
+-- | Parse the start of a verbatim span, assuming that we have already parsed
+-- the initial @\\@. This parser also sets the lexing mode to 'LexVerbatim'.
+startVerbatim :: Lex Token
+startVerbatim = do
   void "`"
-  ln <- verbatimLine
-  go (VerbatimLine 0 ln :)
+  setLexMode LexVerbatim
+  StartVerbatim <$> verbatimLineText
+
+-- | Parse the end of a verbatim span. This parser also sets the lexing mode to
+-- 'LexPlain'.
+endVerbatim :: Lex Token
+endVerbatim = do
+  void "`/"
+  setLexMode LexPlain
+  pure EndVerbatim
+
+-- | Parse a single line of a verbatim span, including the initial newline
+verbatimLine :: Lex Token
+verbatimLine = do
+  void "\n"
+  i <- incLexLine
+  n <- verbatimIndent
+  vlts <- verbatimLineText
+  pure $ VerbatimLine i n vlts
   where
-    go lacc =
-      ( do
-          ln <- fullVerbatimLine
-          go (lacc . (ln :))
-      )
-        <|> ( do
-                void "`/"
-                lp <- getLexLine
-                pure $ Verbatim lp (lacc [])
-            )
-    fullVerbatimLine = do
-      void "\n"
-      void incLexLine
-      n <- verbatimIndent
-      vlts <- verbatimLine
-      pure $ VerbatimLine n vlts
     verbatimIndent = T.length <$> takeWhileP Nothing (== ' ')
-    verbatimLine = many $ verbText <|> verbTick
+
+-- | Parse verbatim line text. This parser is intended to be run after any
+-- initial indentation is parsed.
+verbatimLineText :: Lex [VerbatimLineText]
+verbatimLineText = many $ verbText <|> verbTick
+  where
     verbText = VerbatimLineText <$> takeWhile1P Nothing (/= '`')
     verbTick = "``" $> VerbatimBacktick
 
