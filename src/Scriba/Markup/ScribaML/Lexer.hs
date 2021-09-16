@@ -140,6 +140,7 @@ backslashTok = "\\" >> tok
       escape
         <|> backslashTag
         <|> backslashAnon
+        <|> levelTok
         <|> lineComment
         <|> startVerbatim
 
@@ -211,6 +212,16 @@ verbatimLineText = many $ verbText <|> verbTick
   where
     verbText = VerbatimLineText <$> takeWhile1P Nothing (/= '`')
     verbTick = "``" $> VerbatimBacktick
+
+-- | Parse a level tag, assuming that we have already parsed the initial @\\@.
+-- Level tags look like @\\@ followed by one or more @#@ characters.
+levelTok :: Lex Token
+levelTok = do
+  n <- T.length <$> takeWhile1P (Just "#") (== '#')
+  levelTag n <|> levelAnon n
+  where
+    levelTag n = LevelTag n <$> tagText
+    levelAnon n = ("." :: Lex Text) $> LevelAnon n
 
 -- | Parse a layout tag, which is either an 'ampTag' or an 'ampAnon'. In either
 -- case, a layout tag will start with @&@.

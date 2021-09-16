@@ -27,6 +27,8 @@ data Token
   | LineComment !Text
   | BackslashTag !Text
   | BackslashAnon
+  | LevelTag !Int !Text
+  | LevelAnon !Int
   | -- | start of a verbatim span, then the first run of verbatim line text
     StartVerbatim ![VerbatimLineText]
   | -- | newline, then subsequent indentation and verbatim text
@@ -74,6 +76,8 @@ renderToken (LineSpace n) = T.replicate n " "
 renderToken (LineComment t) = "\\%" <> t
 renderToken (BackslashTag t) = "\\" <> t
 renderToken BackslashAnon = "\\."
+renderToken (LevelTag n t) = "\\" <> T.replicate n "#" <> t
+renderToken (LevelAnon n) = "\\" <> T.replicate n "#" <> "."
 renderToken (StartVerbatim ts) = "\\`" <> renderVerbatimLineText ts
 renderToken (VerbatimLine _ i ts) = "\n" <> T.replicate i " " <> renderVerbatimLineText ts
 renderToken EndVerbatim = "`/"
@@ -108,6 +112,8 @@ tokenLength (LineSpace n) = n
 tokenLength (LineComment t) = 2 + T.length t
 tokenLength (BackslashTag t) = 1 + T.length t
 tokenLength BackslashAnon = 2
+tokenLength (LevelTag n t) = 1 + n + T.length t
+tokenLength (LevelAnon n) = 2 + n
 tokenLength (StartVerbatim ts) = 2 + verbatimLineTextLength ts
 tokenLength (VerbatimLine _ i ts) = 1 + i + verbatimLineTextLength ts
 tokenLength EndVerbatim = 2
