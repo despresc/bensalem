@@ -104,13 +104,12 @@ token = do
         <|> indent
         <|> lineSpace
         <|> backslashTok
-        <|> ampTok
+        <|> ampTag
         <|> lbrace
         <|> rbrace
         <|> lbracket
         <|> rbracket
         <|> equals
-        <|> comma
     LexVerbatim ->
       verbatimLine
         <|> endVerbatim
@@ -120,13 +119,12 @@ token = do
     lbracket = "[" $> Lbracket
     rbracket = "]" $> Rbracket
     equals = "=" $> Equals
-    comma = "{" $> Comma
 
 -- | Parse a run of 'PrintingText', text with no significant characters in it
 printingText :: Lex Token
 printingText = PrintingText <$> takeWhile1P Nothing notSpecial
   where
-    notSpecial c = c `notElem` ['\\', '&', '[', ']', '{', '}', '=', ',', ' ']
+    notSpecial c = c `notElem` ['\\', '&', '[', ']', '{', '}', '=', ' ']
 
 -- | Parse a run of 'LineSpace', a sequence of @\' \'@ space characters
 lineSpace :: Lex Token
@@ -139,7 +137,6 @@ backslashTok = "\\" >> tok
     tok =
       escape
         <|> backslashTag
-        <|> backslashAnon
         <|> levelTok
         <|> lineComment
         <|> startVerbatim
@@ -165,12 +162,6 @@ escape =
 -- initial @\\@. Backslash tags look like @\\@ followed by 'tagText'.
 backslashTag :: Lex Token
 backslashTag = BackslashTag <$> tagText
-
--- | Parse an anonymous backslash tag, assuming that we have already parsed the
--- initial @\\@. Anonymous backslash tags look like @&@ followed by @.@ (a
--- period).
-backslashAnon :: Lex Token
-backslashAnon = "." $> BackslashAnon
 
 -- | Parse a line comment, assuming that we have already parsed the initial
 -- @\\@. Line comments start with @\\%@ and continue until a newline or the end
@@ -218,27 +209,12 @@ verbatimLineText = many $ verbText <|> verbTick
 levelTok :: Lex Token
 levelTok = do
   n <- T.length <$> takeWhile1P (Just "#") (== '#')
-  levelTag n <|> levelAnon n
-  where
-    levelTag n = LevelTag n <$> tagText
-    levelAnon n = ("." :: Lex Text) $> LevelAnon n
-
--- | Parse a layout tag, which is either an 'ampTag' or an 'ampAnon'. In either
--- case, a layout tag will start with @&@.
-ampTok :: Lex Token
-ampTok = "&" >> tok
-  where
-    tok = ampTag <|> ampAnon
+  LevelTag n <$> tagText
 
 -- | Parse a named layout tag, assuming that we have already parsed the initial
 -- @\\@. Named layout tags look like @&@ followed by 'tagText'.
 ampTag :: Lex Token
-ampTag = AmpTag <$> tagText
-
--- | Parse an anonymous layout tag, assuming that we have already parsed the
--- initial @\\@. Anonymous layout tags look like @&@ followed by @.@ (a period).
-ampAnon :: Lex Token
-ampAnon = "." $> AmpAnon
+ampTag = fmap AmpTag $ "&" >> tagText
 
 -- | Tag text is a sequence of alphanumeric characters (characters accepted by
 -- 'isAlphaNum')

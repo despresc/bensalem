@@ -26,22 +26,18 @@ data Token
     LineSpace !Int
   | LineComment !Text
   | BackslashTag !Text
-  | BackslashAnon
   | LevelTag !Int !Text
-  | LevelAnon !Int
   | -- | start of a verbatim span, then the first run of verbatim line text
     StartVerbatim ![VerbatimLineText]
   | -- | newline, then subsequent indentation and verbatim text
     VerbatimLine !Line !Indent ![VerbatimLineText]
   | EndVerbatim
   | AmpTag !Text
-  | AmpAnon
   | Lbrace
   | Rbrace
   | Lbracket
   | Rbracket
   | Equals
-  | Comma
   deriving (Eq, Ord, Show)
 
 -- | One of the recognized escape sequences in plain (not verbatim) text. These
@@ -75,20 +71,16 @@ renderToken (Indent _ ls n) = "\n" <> T.concat ls <> T.replicate n " "
 renderToken (LineSpace n) = T.replicate n " "
 renderToken (LineComment t) = "\\%" <> t
 renderToken (BackslashTag t) = "\\" <> t
-renderToken BackslashAnon = "\\."
 renderToken (LevelTag n t) = "\\" <> T.replicate n "#" <> t
-renderToken (LevelAnon n) = "\\" <> T.replicate n "#" <> "."
 renderToken (StartVerbatim ts) = "\\`" <> renderVerbatimLineText ts
 renderToken (VerbatimLine _ i ts) = "\n" <> T.replicate i " " <> renderVerbatimLineText ts
 renderToken EndVerbatim = "`/"
 renderToken (AmpTag t) = "\\" <> t
-renderToken AmpAnon = "&."
 renderToken Lbrace = "{"
 renderToken Rbrace = "}"
 renderToken Lbracket = "["
 renderToken Rbracket = "]"
 renderToken Equals = "="
-renderToken Comma = ","
 
 renderVerbatimLineText :: [VerbatimLineText] -> Text
 renderVerbatimLineText = T.concat . fmap go
@@ -111,20 +103,16 @@ tokenLength (Indent _ ls n) = 1 + sum ls' + n
 tokenLength (LineSpace n) = n
 tokenLength (LineComment t) = 2 + T.length t
 tokenLength (BackslashTag t) = 1 + T.length t
-tokenLength BackslashAnon = 2
 tokenLength (LevelTag n t) = 1 + n + T.length t
-tokenLength (LevelAnon n) = 2 + n
 tokenLength (StartVerbatim ts) = 2 + verbatimLineTextLength ts
 tokenLength (VerbatimLine _ i ts) = 1 + i + verbatimLineTextLength ts
 tokenLength EndVerbatim = 2
 tokenLength (AmpTag t) = 1 + T.length t
-tokenLength AmpAnon = 2
 tokenLength Lbrace = 1
 tokenLength Rbrace = 1
 tokenLength Lbracket = 1
 tokenLength Rbracket = 1
 tokenLength Equals = 1
-tokenLength Comma = 1
 
 verbatimLineTextLength :: [VerbatimLineText] -> Int
 verbatimLineTextLength = sum . fmap go
