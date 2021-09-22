@@ -70,5 +70,16 @@ data Node
   = PlainText !Text
   | LineSpace !Int
   | LineEnd
-  | Element
+  | -- | an element with attributes and arguments
+    Element AttrMap [[Node]]
+  deriving (Eq, Ord, Show)
+
+data AttrVal
+  = AttrValMarkup [Node]
+  | AttrValMap AttrMap
+  deriving (Eq, Ord, Show)
+
+newtype AttrMap = AttrMap
+  { unAttrMap :: Map Text AttrVal
+  }
   deriving (Eq, Ord, Show)

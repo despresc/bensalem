@@ -24,7 +24,6 @@ import Scriba.Markup.ScribaML.Token
 import Text.Megaparsec
   ( MonadParsec,
     Parsec,
-    many,
     option,
     takeWhile1P,
     takeWhileP,
@@ -111,14 +110,17 @@ token = do
         <|> rbracket
         <|> equals
     LexVerbatim ->
-      verbatimLine
-        <|> endVerbatim
+      indent
+        <|> lineSpace
+        <|> verbatimPrintingText
+        <|> verbatimBacktick
   where
     lbrace = "{" $> Lbrace
     rbrace = "}" $> Rbrace
     lbracket = "[" $> Lbracket
     rbracket = "]" $> Rbracket
     equals = "=" $> Equals
+    verbatimBacktick = "``" $> VerbatimBacktick
 
 -- | Parse a run of 'PrintingText', text with no significant characters in it
 printingText :: Lex Token
@@ -175,7 +177,7 @@ startVerbatim :: Lex Token
 startVerbatim = do
   void "`"
   setLexMode LexVerbatim
-  StartVerbatim <$> verbatimLineText
+  pure StartVerbatim
 
 -- | Parse the end of a verbatim span. This parser also sets the lexing mode to
 -- 'LexPlain'.
@@ -185,24 +187,12 @@ endVerbatim = do
   setLexMode LexPlain
   pure EndVerbatim
 
--- | Parse a single line of a verbatim span, including the initial newline
-verbatimLine :: Lex Token
-verbatimLine = do
-  void "\n"
-  i <- incLexLine
-  n <- verbatimIndent
-  vlts <- verbatimLineText
-  pure $ VerbatimLine i n vlts
+-- | Parse verbatim text other than the backtick escape and significant white
+-- space.
+verbatimPrintingText :: Lex Token
+verbatimPrintingText = VerbatimPrintingText <$> takeWhile1P Nothing p
   where
-    verbatimIndent = T.length <$> takeWhileP Nothing (== ' ')
-
--- | Parse verbatim line text. This parser is intended to be run after any
--- initial indentation is parsed.
-verbatimLineText :: Lex [VerbatimLineText]
-verbatimLineText = many $ verbText <|> verbTick
-  where
-    verbText = VerbatimLineText <$> takeWhile1P Nothing (/= '`')
-    verbTick = "``" $> VerbatimBacktick
+    p c = c `notElem` [' ', '\n', '`']
 
 -- | Parse a level tag, assuming that we have already parsed the initial @\\@.
 -- Level tags look like @\\@ followed by one or more @#@ characters.

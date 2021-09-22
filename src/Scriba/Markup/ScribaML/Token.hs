@@ -10,7 +10,6 @@
 -- document.
 module Scriba.Markup.ScribaML.Token where
 
-import qualified Data.List as List
 import Data.Text (Text)
 import qualified Data.Text as T
 
@@ -27,10 +26,11 @@ data Token
   | LineComment !Text
   | BackslashTag !Text
   | LevelTag !Int !Text
-  | -- | start of a verbatim span, then the first run of verbatim line text
-    StartVerbatim ![VerbatimLineText]
-  | -- | newline, then subsequent indentation and verbatim text
-    VerbatimLine !Line !Indent ![VerbatimLineText]
+  | StartVerbatim
+  | -- | any text other than a newline, space, or backtick
+    VerbatimPrintingText !Text
+  | -- | the literal @``@ in a verbatim context
+    VerbatimBacktick
   | EndVerbatim
   | AmpTag !Text
   | Lbrace
@@ -51,13 +51,6 @@ data EscSequence
   | EscRbracket
   deriving (Eq, Ord, Show)
 
--- | Verbatim line text is either the sequence @\`\`@, interpreted as a single
--- @'`'@, or a sequence of characters other than the character @\'`'@
-data VerbatimLineText
-  = VerbatimLineText !Text
-  | VerbatimBacktick
-  deriving (Eq, Ord, Show)
-
 -- | Render a single token back to 'Text'
 renderToken :: Token -> Text
 renderToken (PrintingText t) = t
@@ -72,8 +65,9 @@ renderToken (LineSpace n) = T.replicate n " "
 renderToken (LineComment t) = "\\%" <> t
 renderToken (BackslashTag t) = "\\" <> t
 renderToken (LevelTag n t) = "\\" <> T.replicate n "#" <> t
-renderToken (StartVerbatim ts) = "\\`" <> renderVerbatimLineText ts
-renderToken (VerbatimLine _ i ts) = "\n" <> T.replicate i " " <> renderVerbatimLineText ts
+renderToken StartVerbatim = "\\`"
+renderToken (VerbatimPrintingText t) = t
+renderToken VerbatimBacktick = "``"
 renderToken EndVerbatim = "`/"
 renderToken (AmpTag t) = "\\" <> t
 renderToken Lbrace = "{"
@@ -81,44 +75,6 @@ renderToken Rbrace = "}"
 renderToken Lbracket = "["
 renderToken Rbracket = "]"
 renderToken Equals = "="
-
-renderVerbatimLineText :: [VerbatimLineText] -> Text
-renderVerbatimLineText = T.concat . fmap go
-  where
-    go (VerbatimLineText t) = t
-    go VerbatimBacktick = "``"
-
--- | Returns the number of source characters represented by a particular
--- 'Token'. Satisfies
---
--- @
--- 'tokenLength' = 'T.length' . 'renderToken'
--- @
-tokenLength :: Token -> Int
-tokenLength (PrintingText t) = T.length t
-tokenLength (Escape _) = 2
-tokenLength (Indent _ ls n) = 1 + sum ls' + n
-  where
-    ls' = List.intersperse 1 $ T.length <$> ls
-tokenLength (LineSpace n) = n
-tokenLength (LineComment t) = 2 + T.length t
-tokenLength (BackslashTag t) = 1 + T.length t
-tokenLength (LevelTag n t) = 1 + n + T.length t
-tokenLength (StartVerbatim ts) = 2 + verbatimLineTextLength ts
-tokenLength (VerbatimLine _ i ts) = 1 + i + verbatimLineTextLength ts
-tokenLength EndVerbatim = 2
-tokenLength (AmpTag t) = 1 + T.length t
-tokenLength Lbrace = 1
-tokenLength Rbrace = 1
-tokenLength Lbracket = 1
-tokenLength Rbracket = 1
-tokenLength Equals = 1
-
-verbatimLineTextLength :: [VerbatimLineText] -> Int
-verbatimLineTextLength = sum . fmap go
-  where
-    go (VerbatimLineText t) = T.length t
-    go VerbatimBacktick = 2
 
 -- | The line that a 'BlankLine' or 'Indent' token starts, or the line
 -- on which a 'Comment' ends
