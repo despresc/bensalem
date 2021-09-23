@@ -12,11 +12,11 @@ module Scriba.Markup.ScribaML.LexerUtils
 
     -- * Alex input
     AlexInput,
+    alexGetByte,
+    initAlexInput,
     getAlexInputSrcPos,
     getAlexInputText,
-    initAlexInput,
     fromAlexInput,
-    alexGetByte,
   )
 where
 
@@ -25,13 +25,6 @@ import Data.Char (ord)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Word (Word8)
-
--- | Keeps track of the number of bytes leftover from an incompletely consumed
--- 'Char'. Note that this is effectively an index into the list 'byte0',
--- 'byte1', 'byte2', so in particular if we have three surplus bytes then
--- 'byte2' is consumed first. This is also reflected in the ordering of the list
--- that 'fromAlexInput' returns.
-type NumSurplusBytes = Word8
 
 -- | A position in a 'Char' stream. The 'srcOffset' is the index of the position
 -- in the initial stream.
@@ -65,13 +58,12 @@ data AlexInput = AlexInput
 instance Show AlexInput where
   show = show . fromAlexInput
 
-getAlexInputSrcPos :: AlexInput -> SrcPos
-getAlexInputSrcPos = srcPos
-
--- | Get the remainder of the 'Text' stream from an 'AlexInput', implicitly
--- discarding any buffered bytes from an incompletely consumed character
-getAlexInputText :: AlexInput -> Text
-getAlexInputText = alexInput
+-- | Keeps track of the number of bytes leftover from an incompletely consumed
+-- 'Char'. Note that this is effectively an index into the list 'byte0',
+-- 'byte1', 'byte2', so in particular if we have three surplus bytes then
+-- 'byte2' is consumed first. This is also reflected in the ordering of the list
+-- that 'fromAlexInput' returns.
+type NumSurplusBytes = Word8
 
 -- | Pop the first byte from the given 'AlexInput', if it is non-empty,
 -- considering the 'Text' input as a stream of bytes encoded in UTF-8. Adapted
@@ -110,6 +102,14 @@ alexGetByte ai@(AlexInput tw sp ns b0 b1 b2 inp) = case ns of
   1 -> Just (b0, ai {numSurplusBytes = 0})
   2 -> Just (b1, ai {numSurplusBytes = 1})
   _ -> Just (b2, ai {numSurplusBytes = 2})
+
+getAlexInputSrcPos :: AlexInput -> SrcPos
+getAlexInputSrcPos = srcPos
+
+-- | Get the remainder of the 'Text' stream from an 'AlexInput', implicitly
+-- discarding any buffered bytes from an incompletely consumed character
+getAlexInputText :: AlexInput -> Text
+getAlexInputText = alexInput
 
 -- | Initialize the 'AlexInput'
 initAlexInput ::
