@@ -28,15 +28,10 @@ import Data.Word (Word8)
 
 -- | Keeps track of the number of bytes leftover from an incompletely consumed
 -- 'Char'. Note that this is effectively an index into the list 'byte0',
--- 'byte1', 'byte2', so in particular if we have a 'ThreeSurplus' then 'byte2'
--- is consumed first. This is also reflected in the ordering of the list that
--- 'fromAlexInput' returns.
-data NumSurplusBytes
-  = ZeroSurplus
-  | OneSurplus
-  | TwoSurplus
-  | ThreeSurplus
-  deriving (Eq, Ord, Show)
+-- 'byte1', 'byte2', so in particular if we have three surplus bytes then
+-- 'byte2' is consumed first. This is also reflected in the ordering of the list
+-- that 'fromAlexInput' returns.
+type NumSurplusBytes = Word8
 
 -- | A position in a 'Char' stream. The 'srcOffset' is the index of the position
 -- in the initial stream.
@@ -83,7 +78,7 @@ getAlexInputText = alexInput
 -- from the basic wrapper in alex.
 alexGetByte :: AlexInput -> Maybe (Word8, AlexInput)
 alexGetByte ai@(AlexInput tw sp ns b0 b1 b2 inp) = case ns of
-  ZeroSurplus -> case T.uncons inp of
+  0 -> case T.uncons inp of
     Just (oc, inp') -> Just ret
       where
         sp' = case oc of
@@ -97,24 +92,24 @@ alexGetByte ai@(AlexInput tw sp ns b0 b1 b2 inp) = case ns of
         ret
           | oc' <= 0x7f =
             ( fromIntegral oc',
-              AlexInput tw sp' ZeroSurplus 0 0 0 inp'
+              AlexInput tw sp' 0 0 0 0 inp'
             )
           | oc' <= 0x7ff =
             ( fromIntegral $ 0xc0 + (oc' `Bits.shiftR` 6),
-              AlexInput tw sp' OneSurplus b0' 0 0 inp'
+              AlexInput tw sp' 1 b0' 0 0 inp'
             )
           | oc' <= 0x7fff =
             ( fromIntegral $ 0xe0 + (oc' `Bits.shiftR` 12),
-              AlexInput tw sp' TwoSurplus b0' b1' 0 inp'
+              AlexInput tw sp' 2 b0' b1' 0 inp'
             )
           | otherwise =
             ( fromIntegral $ 0xf0 + (oc' `Bits.shiftR` 18),
-              AlexInput tw sp' ThreeSurplus b0' b1' b2' inp'
+              AlexInput tw sp' 3 b0' b1' b2' inp'
             )
     Nothing -> Nothing
-  OneSurplus -> Just (b0, ai {numSurplusBytes = ZeroSurplus})
-  TwoSurplus -> Just (b1, ai {numSurplusBytes = OneSurplus})
-  ThreeSurplus -> Just (b2, ai {numSurplusBytes = TwoSurplus})
+  1 -> Just (b0, ai {numSurplusBytes = 0})
+  2 -> Just (b1, ai {numSurplusBytes = 1})
+  _ -> Just (b2, ai {numSurplusBytes = 2})
 
 -- | Initialize the 'AlexInput'
 initAlexInput ::
@@ -127,7 +122,7 @@ initAlexInput n t =
   AlexInput
     { tabWidth = n,
       srcPos = initSrcPos,
-      numSurplusBytes = ZeroSurplus,
+      numSurplusBytes = 0,
       byte0 = 0,
       byte1 = 0,
       byte2 = 0,
@@ -141,7 +136,7 @@ fromAlexInput :: AlexInput -> (Int, SrcPos, [Word8], Text)
 fromAlexInput (AlexInput tw sp ns b0 b1 b2 t) = (tw, sp, ret, t)
   where
     ret = case ns of
-      ZeroSurplus -> []
-      OneSurplus -> [b0]
-      TwoSurplus -> [b1, b0]
-      ThreeSurplus -> [b2, b1, b0]
+      0 -> []
+      1 -> [b0]
+      2 -> [b1, b0]
+      _ -> [b2, b1, b0]
