@@ -19,6 +19,8 @@ import Data.Functor (void, ($>))
 import Data.String (IsString (..))
 import Data.Text (Text)
 import qualified Data.Text as T
+import qualified Data.Text.Lazy as TL
+import qualified Data.Text.Lazy.Builder as TB
 import Data.Void (Void)
 import Scriba.Markup.ScribaML.Token
 import Text.Megaparsec
@@ -55,9 +57,8 @@ newtype Lex a = Lex {unLex :: S.StateT LexState (Parsec Void Text) a}
 
 -- | The 'LexState' keeps track of the current line number and the current
 -- lexing mode.
-data LexState = LexState
-  { lexLine :: !Line,
-    lexMode :: !LexMode
+newtype LexState = LexState
+  { lexMode :: LexMode
   }
   deriving (Eq, Ord, Show)
 
@@ -70,26 +71,16 @@ data LexMode
 runLex :: Lex a -> Parsec Void Text a
 runLex = fmap fst . go . S.runStateT . unLex
   where
-    go f = f $ LexState 0 LexPlain
+    go f = f $ LexState LexPlain
 
 instance (a ~ Text) => IsString (Lex a) where
   fromString = Lex . S.lift . fromString
-
--- | Get the current 'Line' number
-getLexLine :: Lex Line
-getLexLine = S.gets lexLine
-
--- | Increment the 'Line' and return the /new/ state
-incLexLine :: Lex Line
-incLexLine = do
-  S.modify $ \(LexState n x) -> LexState (n + 1) x
-  S.gets lexLine
 
 getLexMode :: Lex LexMode
 getLexMode = S.gets lexMode
 
 setLexMode :: LexMode -> Lex ()
-setLexMode m = S.modify $ \(LexState n _) -> LexState n m
+setLexMode m = S.modify $ const $ LexState m
 
 -- | Parse a single token. Note that this parser has no way of knowing whether
 -- or not it is at the beginning of a line, and so it will always parse an
@@ -99,7 +90,7 @@ token = do
   m <- getLexMode
   case m of
     LexPlain ->
-      printingText
+      plainText
         <|> indent
         <|> lineSpace
         <|> backslashTok
@@ -112,7 +103,7 @@ token = do
     LexVerbatim ->
       indent
         <|> lineSpace
-        <|> verbatimPrintingText
+        <|> verbatimPlainText
         <|> verbatimBacktick
   where
     lbrace = "{" $> Lbrace
@@ -122,9 +113,9 @@ token = do
     equals = "=" $> Equals
     verbatimBacktick = "``" $> VerbatimBacktick
 
--- | Parse a run of 'PrintingText', text with no significant characters in it
-printingText :: Lex Token
-printingText = PrintingText <$> takeWhile1P Nothing notSpecial
+-- | Parse a run of 'PlainText', text with no significant characters in it
+plainText :: Lex Token
+plainText = PlainText <$> takeWhile1P Nothing notSpecial
   where
     notSpecial c = c `notElem` ['\\', '&', '[', ']', '{', '}', '=', ' ']
 
@@ -139,7 +130,7 @@ backslashTok = "\\" >> tok
     tok =
       escape
         <|> backslashTag
-        <|> levelTok
+        <|> numberSignTag
         <|> lineComment
         <|> startVerbatim
 
@@ -189,17 +180,17 @@ endVerbatim = do
 
 -- | Parse verbatim text other than the backtick escape and significant white
 -- space.
-verbatimPrintingText :: Lex Token
-verbatimPrintingText = VerbatimPrintingText <$> takeWhile1P Nothing p
+verbatimPlainText :: Lex Token
+verbatimPlainText = VerbatimPlainText <$> takeWhile1P Nothing p
   where
     p c = c `notElem` [' ', '\n', '`']
 
 -- | Parse a level tag, assuming that we have already parsed the initial @\\@.
 -- Level tags look like @\\@ followed by one or more @#@ characters.
-levelTok :: Lex Token
-levelTok = do
+numberSignTag :: Lex Token
+numberSignTag = do
   n <- T.length <$> takeWhile1P (Just "#") (== '#')
-  LevelTag n <$> tagText
+  NumberSignTag n <$> tagText
 
 -- | Parse a named layout tag, assuming that we have already parsed the initial
 -- @\\@. Named layout tags look like @&@ followed by 'tagText'.
@@ -214,11 +205,10 @@ tagText = takeWhile1P (Just "tag text") isAlphaNum
 -- | Parse "indentation", which is a newline followed by zero or more blank
 -- lines (zero or more spaces followed by a newline)
 indent :: Lex Token
-indent = newline >> go id
+indent = newline >> go "\n"
   where
-    lineStart = takeWhileP Nothing (== ' ')
+    lineStart = TB.fromText <$> takeWhileP Nothing (== ' ')
     go bacc = do
       ls <- lineStart
-      lp <- incLexLine
-      option (Indent lp (bacc []) (T.length ls)) $
-        newline >> go (bacc . (ls :))
+      option (Indent (TL.toStrict $ TB.toLazyText $ bacc <> ls)) $
+        newline >> go (bacc <> ls <> "\n")

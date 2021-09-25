@@ -16,19 +16,19 @@ import qualified Data.Text as T
 -- | An individual scriba token.
 data Token
   = -- | text other than a line ending, space, or special character
-    PrintingText !Text
+    PlainText !Text
   | Escape !EscSequence
   | -- | zero or more blank lines, then zero or more spaces, also recording the
     -- last line's number
-    Indent !Line ![Text] !Int
+    Indent !Text
   | -- | spaces not at the beginning of a line
     LineSpace !Int
   | LineComment !Text
   | BackslashTag !Text
-  | LevelTag !Int !Text
+  | NumberSignTag !Int !Text
   | StartVerbatim
   | -- | any text other than a newline, space, or backtick
-    VerbatimPrintingText !Text
+    VerbatimPlainText !Text
   | -- | the literal @``@ in a verbatim context
     VerbatimBacktick
   | EndVerbatim
@@ -38,6 +38,7 @@ data Token
   | Lbracket
   | Rbracket
   | Equals
+  | TokenEOF
   deriving (Eq, Ord, Show)
 
 -- | One of the recognized escape sequences in plain (not verbatim) text. These
@@ -53,20 +54,20 @@ data EscSequence
 
 -- | Render a single token back to 'Text'
 renderToken :: Token -> Text
-renderToken (PrintingText t) = t
+renderToken (PlainText t) = t
 renderToken (Escape EscAnd) = "\\&"
 renderToken (Escape EscBackslash) = "\\\\"
 renderToken (Escape EscLbrace) = "\\{"
 renderToken (Escape EscRbrace) = "\\}"
 renderToken (Escape EscLbracket) = "\\["
 renderToken (Escape EscRbracket) = "\\]"
-renderToken (Indent _ ls n) = "\n" <> T.concat ls <> T.replicate n " "
+renderToken (Indent ls) = ls
 renderToken (LineSpace n) = T.replicate n " "
 renderToken (LineComment t) = "\\%" <> t
 renderToken (BackslashTag t) = "\\" <> t
-renderToken (LevelTag n t) = "\\" <> T.replicate n "#" <> t
+renderToken (NumberSignTag n t) = "\\" <> T.replicate n "#" <> t
 renderToken StartVerbatim = "\\`"
-renderToken (VerbatimPrintingText t) = t
+renderToken (VerbatimPlainText t) = t
 renderToken VerbatimBacktick = "``"
 renderToken EndVerbatim = "`/"
 renderToken (AmpTag t) = "\\" <> t
@@ -75,6 +76,7 @@ renderToken Rbrace = "}"
 renderToken Lbracket = "["
 renderToken Rbracket = "]"
 renderToken Equals = "="
+renderToken TokenEOF = ""
 
 -- | The line that a 'BlankLine' or 'Indent' token starts, or the line
 -- on which a 'Comment' ends
