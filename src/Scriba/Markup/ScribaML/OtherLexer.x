@@ -30,7 +30,9 @@ $inlineStarter = $identish # [` \% # &]
 tokens :-
 
 <0> {
-  @blanks { textTok Indent `thenCode` plainText}
+  -- we are a little strict here. if there is no white space we recover in
+  -- lexToken
+  (\n | \ )+ { textTok Indent `thenCode` plainText}
 }
 
 <plainText> {
@@ -76,7 +78,11 @@ lexToken = do
     (t:toks') -> put (parsestate { parseStatePendingTokens = toks' }) *> pure t
     _ -> case alexScan inp sc of
             AlexEOF -> doEOF
-            AlexError ai -> throwError $ LexerError $ NoToken $ getAlexInputSrcPos ai
+            AlexError ai
+              | sc == 0 -> do
+                  put $ parsestate {parseStateStartCode = plainText}
+                  lexToken
+              | otherwise -> throwError $ LexerError $ NoToken $ getAlexInputSrcPos ai
             AlexSkip inp' _ -> setInput inp' >> lexToken
             AlexToken inp' toklen act -> do
               let initPos = getAlexInputSrcPos inp
