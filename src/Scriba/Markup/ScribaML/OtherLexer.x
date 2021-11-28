@@ -7,22 +7,19 @@ where
 
 
 import Control.Monad.Except (throwError)
-import Data.Sequence (Seq((:<|)))
-import Control.Monad.State (MonadState(..), modify)
-import Data.Text (Text)
+import Control.Monad.State (MonadState(..))
 import Scriba.Markup.ScribaML.ParserUtils
 import Scriba.Markup.ScribaML.Token
 import qualified Data.Text as T
 }
 
--- does the backslash need to be escaped?
-$specialchar = [\\ \[ \]  \{ \} = \  \n \,]
+$specialchar = [\\ \[ \]  \{ \} = \  \n \, \# &]
 $whitespace = [\  \n]
 $plaintext = $printable # $specialchar
 $identish = $printable # [ \[ \] \{ \} ]
 $verbatimPlain = [^ \  \n `]
 $backslash = [\\]
-$inlineStarter = $identish # [` \% # &]
+$inlineStarter = $identish # [` \% \# &]
 
 @blanks = (\n | \ )*
 @indent = \n @blanks
@@ -31,15 +28,44 @@ tokens :-
 
 <0> {
   -- we are a little strict here. if there is no white space we recover in
-  -- lexToken
-  (\n | \ )+ { textTok Indent `thenCode` plainText}
+  -- lexToken.
+  (\n | \ )+ { textTok Indent `thenCode` plainTextBeginLine}
 }
 
-<plainText> {
+-- the only differences between begin line and mid line is that begin line
+-- doesn't need to recognize white space tokens, and mid line should not
+-- recognize level tags
+
+<plainTextBeginLine> {
+  $plaintext+ { textTok PlainText `thenCode` plainTextMidLine }
+
+  "{" { doStartBraceGroup `thenCode` plainTextMidLine }
+  "}" { doEndBraceGroup `thenCode` plainTextMidLine }
+  "[" { doStartAttrSet `thenCode` plainTextMidLine }
+  "]" { doEndAttrSet `thenCode` plainTextMidLine }
+  "=" { plainTok Equals `thenCode` plainTextMidLine }
+
+  "\\" { plainTok (Escape EscBackslash) `thenCode` plainTextMidLine }
+  "\{" { plainTok (Escape EscLbrace) `thenCode` plainTextMidLine }
+  "\}" { plainTok (Escape EscRbrace) `thenCode` plainTextMidLine }
+  "\[" { plainTok (Escape EscLbracket) `thenCode` plainTextMidLine }
+  "\]" { plainTok (Escape EscRbracket) `thenCode` plainTextMidLine }
+  "\&" { plainTok (Escape EscAnd) `thenCode` plainTextMidLine }
+  "\#" { plainTok (Escape EscNum) `thenCode` plainTextMidLine }
+
+  "\`" { plainTok StartVerbatim `thenCode` verbatimPlain }
+  "\%" .* { doLineComment `thenCode` plainTextMidLine }
+
+  "&" $identish+ { doLayoutTag `thenCode` plainTextMidLine }
+  "\" $inlineStarter $identish* { doInlineTag `thenCode` plainTextMidLine }
+  "#"+ $identish+ { doLevelTag `thenCode` plainTextMidLine }
+}
+
+<plainTextMidLine> {
   $plaintext+ { textTok PlainText }
 
   \ + { \toklen spn _ -> pure $ Located spn $ LineSpace toklen }
-  @indent { doIndent }
+  @indent { doIndent `thenCode` plainTextBeginLine}
 
   "{" { doStartBraceGroup }
   "}" { doEndBraceGroup }
@@ -52,20 +78,21 @@ tokens :-
   "\}" { plainTok $ Escape EscRbrace }
   "\[" { plainTok $ Escape EscLbracket }
   "\]" { plainTok $ Escape EscRbracket }
+  "\&" { plainTok (Escape EscAnd) `thenCode` plainTextMidLine }
+  "\#" { plainTok (Escape EscNum) `thenCode` plainTextMidLine }
 
   "\`" { plainTok StartVerbatim `thenCode` verbatimPlain }
   "\%" .* { doLineComment }
 
-  "\" "#"+ $identish+ { doLevelTag }
-  "\&" $identish+ { doLayoutTag }
+  "&" $identish+ { doLayoutTag }
   "\" $inlineStarter $identish* { doInlineTag }
 }
 
 <verbatimPlain> {
   $verbatimPlain+ { textTok VerbatimPlainText }
-  @indent { doIndent }
+  @indent { doVerbatimIndent }
   "``" { plainTok $ VerbatimBacktick }
-  "`/" { plainTok EndVerbatim `thenCode` plainText }
+  "`/" { plainTok EndVerbatim `thenCode` plainTextMidLine }
 }
 
 {
@@ -73,14 +100,14 @@ tokens :-
 -- | Parse a single token from the input stream
 lexToken :: Parser (Located Token)
 lexToken = do
-  parsestate@(ParseState sc inp toks _ _) <- get
+  parsestate@(ParseState sc inp toks _ _ _) <- get
   case toks of
     (t:toks') -> put (parsestate { parseStatePendingTokens = toks' }) *> pure t
     _ -> case alexScan inp sc of
             AlexEOF -> doEOF
             AlexError ai
               | sc == 0 -> do
-                  put $ parsestate {parseStateStartCode = plainText}
+                  put $ parsestate {parseStateStartCode = plainTextBeginLine}
                   lexToken
               | otherwise -> throwError $ LexerError $ NoToken $ getAlexInputSrcPos ai
             AlexSkip inp' _ -> setInput inp' >> lexToken

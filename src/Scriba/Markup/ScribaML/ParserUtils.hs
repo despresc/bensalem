@@ -30,6 +30,7 @@ module Scriba.Markup.ScribaML.ParserUtils
     doStartAttrSet,
     doEndAttrSet,
     doIndent,
+    doVerbatimIndent,
     doLineComment,
     doEOF,
 
@@ -110,6 +111,7 @@ data ParseState = ParseState
   { parseStateStartCode :: !Int,
     parseStateInput :: !AlexInput,
     parseStatePendingTokens :: ![Located Token],
+    parseStatePendingIndent :: !(Maybe (Located Token)),
     parseStateLayoutDepth :: !Int,
     parseStateScopeStack :: ![Scope]
   }
@@ -143,6 +145,9 @@ setScopeStack s = modify $ \x -> x {parseStateScopeStack = s}
 setPendingTokens :: [Located Token] -> Parser ()
 setPendingTokens toks = modify $ \s -> s {parseStatePendingTokens = toks}
 
+setPendingIndent :: Located Token -> Parser ()
+setPendingIndent t = modify $ \s -> s {parseStatePendingIndent = Just t}
+
 -- | Construct a zero-width 'Tok.EndImplicitScope' at the start of the given 'SrcSpan'
 conVirtual :: SrcSpan -> Located Token
 conVirtual sp = Located sp' Tok.EndImplicitScope
@@ -159,9 +164,10 @@ resolveLevelScopes spn n tok = do
   let (pendingTokLen, newScopes) = popLevelLen scopes
   setScopeStack newScopes
   pushScope $ Scope (LevelScope n) spn
-  let (locTok, toks) = replicateVirtuals spn tok pendingTokLen
+  pendingIndent <- gets parseStatePendingIndent
+  let (emitTok, toks) = replicateVirtuals' spn pendingIndent tok pendingTokLen
   setPendingTokens toks
-  pure locTok
+  pure emitTok
   where
     popLevelLen = popLevelLen' (0 :: Int)
     popLevelLen' !len ss
@@ -181,9 +187,9 @@ doLevelTag :: AlexAction
 doLevelTag _ sp t =
   case Tok.validEltName tagt of
     Just eltname -> resolveLevelScopes sp level $ Tok.NumberSignTag level eltname
-    Nothing -> throwError $ LexerError $ InvalidEltName $ Located errSp (tagt <> "it's here")
+    Nothing -> throwError $ LexerError $ InvalidEltName $ Located errSp tagt
   where
-    (nums, tagt) = T.span (== '#') $ T.drop 1 t
+    (nums, tagt) = T.span (== '#') t
     level = T.length nums
     errSp = sp {srcSpanStart = spStart {srcCol = srcCol spStart + level}}
       where
@@ -281,7 +287,7 @@ doLayoutTag _ sp t = case Tok.validEltName tagt of
   Nothing -> throwError $ LexerError $ InvalidEltName $ Located errSp tagt
   where
     layoutDepth = srcCol $ srcSpanStart sp
-    tagt = T.drop 2 t
+    tagt = T.drop 1 t
     errSp = sp {srcSpanStart = spStart {srcCol = srcCol spStart + 1}}
       where
         spStart = srcSpanStart sp
@@ -301,11 +307,10 @@ doInlineTag _ sp t = case Tok.validEltName tagt of
 -- the length of that run is its layout depth, and otherwise its layout depth is
 -- equal to 1. An indentation token resolves all layout and level scopes until
 -- the current layout depth is less than the level of the token. A lexical error
--- is thrown if a brace
-
--- Indentation that closing pending layout and level scopes until the
--- current layout level is less than the level of the token, throwing an error
--- if a 'BraceScope' or 'AttributeScope' is encountered during this process
+-- is thrown if a brace or attribute scope is encountered during this process.
+-- This action must also look ahead to see if there is an upcoming level tag,
+-- and if so, potentially delay the emission of the indent token to just before
+-- the emission of that level tag.
 doIndent :: AlexAction
 doIndent _ sp t = do
   scopes <- gets parseStateScopeStack
@@ -314,17 +319,46 @@ doIndent _ sp t = do
   -- be considered to be part of a blank line, and hence the Indent token in
   -- question must have a layout depth of 1 regardless of what its ending column
   -- is. the correct layout depth is 1 because EOF closes all pending layout and
-  -- level scopes.
-  let tokLevel
-        | T.null currInput = 1
-        | otherwise = srcCol $ srcSpanEnd sp
-  go tokLevel (0 :: Int) scopes
+  -- level scopes. we may also need to delay the emission of the indent if we
+  -- are about to lex the start of a level element, hence the lookahead for that
+  -- too.
+  let (tokLevel, upcomingLevelDepth) =
+        case T.uncons currInput of
+          Just ('#', _) -> (srcCol $ srcSpanEnd sp, Just lvl)
+          Just _ -> (srcCol $ srcSpanEnd sp, Nothing)
+          Nothing -> (1, Nothing)
+        where
+          lvl = T.length $ T.takeWhile (== '#') currInput
+  go upcomingLevelDepth tokLevel (0 :: Int) scopes
   where
-    cleanUp numVirtuals = do
+    cleanUp Nothing numVirtuals = do
       let (tok, toks) = replicateVirtuals sp (Tok.Indent t) numVirtuals
       setPendingTokens toks
       pure tok
-    go tokLevel !numVirtuals (scope : scopes) = do
+    -- if we have a pending level scope that would be closed by the upcoming
+    -- level tag, we must delay the emission of the indent token, so that after
+    -- we lex that token we can close all of the level scopes as appropriate,
+    -- emit the delayed indent token, then finally emit the level tag. we happen
+    -- to resolve a single level scope ahead of time here, just so that we are
+    -- guaranteed to have something to emit. this does slightly change where a
+    -- level tag name lexer error will occur in the token stream, but this
+    -- shouldn't really matter much in practice.
+    cleanUp (Just upcomingLevelDepth) numVirtuals = do
+      scopes <- gets parseStateScopeStack
+      case scopes of
+        scope : scopes'
+          | LevelScope m <- scopeType scope,
+            m >= upcomingLevelDepth -> do
+            let toks = replicate numVirtuals $ conVirtual sp
+            setPendingIndent $ Located sp $ Tok.Indent t
+            setPendingTokens toks
+            setScopeStack scopes'
+            pure $ conVirtual sp
+        _ -> do
+          let (tok, toks) = replicateVirtuals sp (Tok.Indent t) numVirtuals
+          setPendingTokens toks
+          pure tok
+    go upcomingLevelDepth tokLevel !numVirtuals ss@(scope : scopes) = do
       lvl <- gets parseStateLayoutDepth
       if lvl >= tokLevel
         then case scopeType scope of
@@ -333,12 +367,29 @@ doIndent _ sp t = do
           -- closed
           LayoutScope _ ambientLevel -> do
             setLayoutDepth ambientLevel
-            go tokLevel (numVirtuals + 1) scopes
-          LevelScope _ -> go tokLevel (numVirtuals + 1) scopes
+            go upcomingLevelDepth tokLevel (numVirtuals + 1) scopes
+          LevelScope _ ->
+            go upcomingLevelDepth tokLevel (numVirtuals + 1) scopes
           BraceScope -> throwError $ LexerError DeIndentInBracedGroup
           AttrSetScope -> throwError $ LexerError DeIndentInAttrSet
-        else cleanUp numVirtuals
-    go _ !numVirtuals [] = cleanUp numVirtuals
+        else do
+          setScopeStack ss
+          cleanUp upcomingLevelDepth numVirtuals
+    go upcomingLevelDepth _ !numVirtuals [] = do
+      setScopeStack []
+      cleanUp upcomingLevelDepth numVirtuals
+
+-- | Handle an 'Indent' token while inside a verbatim span. The handling
+-- required here is simpler than in 'doIndent', since de-indents are forbidden
+-- within verbatim spans and nothing in a verbatim span can create nested
+-- scopes.
+doVerbatimIndent :: AlexAction
+doVerbatimIndent _ sp t = do
+  let tokLevel = srcCol $ srcSpanEnd sp
+  depth <- gets parseStateLayoutDepth
+  if depth < tokLevel
+    then pure $ Located sp $ Tok.Indent t
+    else throwError $ LexerError DeIndentInVerbatimSpan
 
 -- | Given a 'Token' and the 'SrcSpan' that it spans, create the indicated
 -- number of virtual tokens at the start of the 'SrcSpan', returning the first
@@ -352,6 +403,33 @@ replicateVirtuals sp tok n
     locTok = Located sp tok
     go m acc
       | m == n = (tokEnd, acc [locTok])
+      | otherwise = go (m + 1) (acc . (tokEnd :))
+
+-- | Like 'replicateVirtuals', but also takes a possibly-pending token to emit
+-- just before the passed token.
+replicateVirtuals' ::
+  SrcSpan ->
+  Maybe (Located Token) ->
+  Token ->
+  Int ->
+  (Located Token, [Located Token])
+replicateVirtuals' sp Nothing tok n
+  | n <= 0 = (locTok, [])
+  | otherwise = go 1 id
+  where
+    tokEnd = conVirtual sp
+    locTok = Located sp tok
+    go m acc
+      | m == n = (tokEnd, acc [locTok])
+      | otherwise = go (m + 1) (acc . (tokEnd :))
+replicateVirtuals' sp (Just pending) tok n
+  | n <= 0 = (pending, [locTok])
+  | otherwise = go 1 id
+  where
+    tokEnd = conVirtual sp
+    locTok = Located sp tok
+    go m acc
+      | m == n = (tokEnd, acc [pending, locTok])
       | otherwise = go (m + 1) (acc . (tokEnd :))
 
 -- | Resolve all pending scopes, throwing a lexer error if there are any pending
@@ -377,7 +455,15 @@ doEOF = do
     getNumVirtuals' !nv [] = pure nv
 
 initParseState :: AlexInput -> ParseState
-initParseState ai = ParseState 0 ai mempty 0 []
+initParseState ai =
+  ParseState
+    { parseStateStartCode = 0,
+      parseStateInput = ai,
+      parseStatePendingTokens = [],
+      parseStatePendingIndent = Nothing,
+      parseStateLayoutDepth = 0,
+      parseStateScopeStack = []
+    }
 
 -- TODO: probably want to add source positions to all of these...
 data ParseError
@@ -406,6 +492,8 @@ data LexError
     DeIndentInBracedGroup
   | -- | a de-indent occurred in an attribute set
     DeIndentInAttrSet
+  | -- | a de-indent occurred in a verbatim span
+    DeIndentInVerbatimSpan
   deriving (Eq, Ord, Show)
 
 -- | A position in a 'Char' stream. The 'srcOffset' is the index of the position

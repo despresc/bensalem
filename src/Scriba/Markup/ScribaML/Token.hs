@@ -55,6 +55,8 @@ data EscSequence
   | EscRbrace
   | EscLbracket
   | EscRbracket
+  | EscAnd
+  | EscNum
   deriving (Eq, Ord, Show)
 
 -- | Render a single token back to 'Text'
@@ -65,6 +67,8 @@ renderToken (Escape EscLbrace) = "\\{"
 renderToken (Escape EscRbrace) = "\\}"
 renderToken (Escape EscLbracket) = "\\["
 renderToken (Escape EscRbracket) = "\\]"
+renderToken (Escape EscAnd) = "\\&"
+renderToken (Escape EscNum) = "\\#"
 renderToken (Indent ls) = ls
 renderToken (LineSpace n) = T.replicate n " "
 renderToken (LineComment t) = "\\%" <> t
