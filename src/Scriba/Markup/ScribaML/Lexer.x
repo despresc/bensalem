@@ -1,5 +1,5 @@
 {
-module Scriba.Markup.ScribaML.OtherLexer
+module Scriba.Markup.ScribaML.Lexer
   ( lexToken
   , lexTokens
   , alexScan )
@@ -28,7 +28,7 @@ tokens :-
 <0> {
   -- we are a little strict here. if there is no white space we recover in
   -- lexToken.
-  (\n | \ )+ { textTok Indent `thenCode` plainTextBeginLine}
+  (\n | \ )+ { textTok Blanks `thenCode` plainTextBeginLine}
 }
 
 -- the only differences between begin line and mid line is that begin line
@@ -52,7 +52,7 @@ tokens :-
   "\&" { plainTok (Escape EscAnd) `thenCode` plainTextMidLine }
   "\#" { plainTok (Escape EscNum) `thenCode` plainTextMidLine }
 
-  "\`" { doStartVerbatim `thenCode` verbatimPlain }
+  "\`" { doStartInlineVerbatim `thenCode` verbatimPlain }
   "\%" .* { doLineComment `thenCode` plainTextMidLine }
 
   "&" $identish+ { doLayoutTag `thenCode` plainTextMidLine }
@@ -64,7 +64,7 @@ tokens :-
   $plaintext+ { textTok PlainText }
 
   \ + { \toklen spn _ -> pure $ Located spn $ LineSpace toklen }
-  @indent { doIndent `thenCode` plainTextBeginLine}
+  @indent { doBlanks `thenCode` plainTextBeginLine}
 
   "{" { doStartBraceGroup }
   "}" { doEndBraceGroup }
@@ -80,7 +80,7 @@ tokens :-
   "\&" { plainTok (Escape EscAnd) `thenCode` plainTextMidLine }
   "\#" { plainTok (Escape EscNum) `thenCode` plainTextMidLine }
 
-  "\`" { doStartVerbatim `thenCode` verbatimPlain }
+  "\`" { doStartInlineVerbatim `thenCode` verbatimPlain }
   "\%" .* { doLineComment }
 
   "&" $identish+ { doLayoutTag }
@@ -89,9 +89,9 @@ tokens :-
 
 <verbatimPlain> {
   $verbatimPlain+ { textTok VerbatimPlainText }
-  @indent { doVerbatimIndent }
+  @indent { doVerbatimBlanks }
   "``" { plainTok $ VerbatimBacktick }
-  "`/" { plainTok EndVerbatim `thenCode` plainTextMidLine }
+  "`/" { doEndInlineVerbatim `thenCode` plainTextMidLine }
 }
 
 {
@@ -112,13 +112,13 @@ lexToken = do
                   let nm = getAlexInputSrcName ai
                   let pos = getAlexInputSrcPos ai
                   throwLexError (SrcSpan nm pos pos) NoToken
-            AlexSkip inp' _ -> setInput inp' >> lexToken
+            AlexSkip inp' _ -> setInput inp' *> lexToken
             AlexToken inp' toklen act -> do
               let initPos = getAlexInputSrcPos inp
               let finalPos = getAlexInputSrcPos inp'
               let name = getAlexInputSrcName inp
               let posSpan = SrcSpan name initPos finalPos
-              setInput inp' >> act toklen posSpan (T.take toklen $ getAlexInputText inp)
+              setInput inp' *> act toklen posSpan (T.take toklen $ getAlexInputText inp)
 
 -- | Tokenize the entire input stream
 lexTokens :: Parser [Located Token]

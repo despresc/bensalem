@@ -13,32 +13,29 @@ import Data.Char (isAlphaNum)
 import Data.Text (Text)
 import qualified Data.Text as T
 
--- TODO rename tokens as necessary (level tag, layout tag, etc. probably braced
--- tag or inline tag)
-
 -- | An individual scriba token.
 data Token
   = -- | text other than a line ending, space, or special character
     PlainText !Text
   | Escape !EscSequence
   | -- | zero or more blank lines, then zero or more spaces
-    Indent !Text
+    Blanks !Text
   | -- | spaces not at the beginning of a line
     LineSpace !Int
   | LineComment !Text
-  | BackslashTag !EltName
-  | NumberSignTag !Int !EltName
-  | StartVerbatim
+  | InlineTag !EltName
+  | LevelTag !Int !EltName
+  | LayoutTag !EltName
+  | StartInlineVerbatim
   | -- | any text other than a newline, space, or backtick
     VerbatimPlainText !Text
   | -- | the literal @``@ in a verbatim context
     VerbatimBacktick
-  | EndVerbatim
-  | AmpTag !EltName
-  | Lbrace
-  | Rbrace
-  | Lbracket
-  | Rbracket
+  | EndInlineVerbatim
+  | StartBraceGroup
+  | EndBraceGroup
+  | StartAttrSet
+  | EndAttrSet
   | Equals
   | Comma
   | EndImplicitScope
@@ -69,20 +66,20 @@ renderToken (Escape EscLbracket) = "\\["
 renderToken (Escape EscRbracket) = "\\]"
 renderToken (Escape EscAnd) = "\\&"
 renderToken (Escape EscNum) = "\\#"
-renderToken (Indent ls) = ls
+renderToken (Blanks ls) = ls
 renderToken (LineSpace n) = T.replicate n " "
 renderToken (LineComment t) = "\\%" <> t
-renderToken (BackslashTag t) = "\\" <> t
-renderToken (NumberSignTag n t) = "\\" <> T.replicate n "#" <> t
-renderToken StartVerbatim = "\\`"
+renderToken (InlineTag t) = "\\" <> t
+renderToken (LevelTag n t) = T.replicate n "#" <> t
+renderToken (LayoutTag t) = "&" <> t
+renderToken StartInlineVerbatim = "\\`"
 renderToken (VerbatimPlainText t) = t
 renderToken VerbatimBacktick = "``"
-renderToken EndVerbatim = "`/"
-renderToken (AmpTag t) = "\\&" <> t
-renderToken Lbrace = "{"
-renderToken Rbrace = "}"
-renderToken Lbracket = "["
-renderToken Rbracket = "]"
+renderToken EndInlineVerbatim = "`/"
+renderToken StartBraceGroup = "{"
+renderToken EndBraceGroup = "}"
+renderToken StartAttrSet = "["
+renderToken EndAttrSet = "]"
 renderToken Equals = "="
 renderToken Comma = ","
 renderToken EndImplicitScope = ""
@@ -96,15 +93,14 @@ type Line = Int
 -- represented by an 'Indent' token
 type Indent = Int
 
--- | A lexically-valid element name, which is a list of non-empty unicode
--- alphanumeric strings, separated by periods. In future this type will have
--- more structure.
---
--- The lexical structure may also change, if it seems necessary to
+-- | A lexically-valid element name, which is a sequence of unicode alphanumeric
+-- characters, dashes, and underscores
 type EltName = Text
 
 -- | Tests whether or not the 'Text' is a valid 'EltName'
 validEltName :: Text -> Maybe EltName
 validEltName t
-  | T.all isAlphaNum t = Just t
+  | T.all isValidChar t = Just t
   | otherwise = Nothing
+  where
+    isValidChar c = isAlphaNum c || c == '-' || c == '_'

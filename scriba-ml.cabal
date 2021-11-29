@@ -29,7 +29,7 @@ library
   build-tools:
     alex
   exposed-modules:
-    Scriba.Markup.ScribaML.OtherLexer
+    Scriba.Markup.ScribaML.Lexer
     Scriba.Markup.ScribaML.ParserUtils
     Scriba.Markup.ScribaML.Syntax
     Scriba.Markup.ScribaML.Token

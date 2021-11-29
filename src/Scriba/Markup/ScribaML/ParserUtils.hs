@@ -32,10 +32,11 @@ module Scriba.Markup.ScribaML.ParserUtils
     doEndBraceGroup,
     doStartAttrSet,
     doEndAttrSet,
-    doIndent,
-    doVerbatimIndent,
+    doBlanks,
+    doVerbatimBlanks,
     doLineComment,
-    doStartVerbatim,
+    doStartInlineVerbatim,
+    doEndInlineVerbatim,
     doEOF,
 
     -- * Source positions
@@ -204,7 +205,7 @@ doLineComment _ sp t = pure $ Located sp $ Tok.LineComment $ T.drop 2 t
 doLevelTag :: AlexAction
 doLevelTag _ sp t =
   case Tok.validEltName tagt of
-    Just eltname -> resolveLevelScopes sp level $ Tok.NumberSignTag level eltname
+    Just eltname -> resolveLevelScopes sp level $ Tok.LevelTag level eltname
     Nothing -> throwLexError errSp $ InvalidEltName tagt
   where
     (nums, tagt) = T.span (== '#') t
@@ -218,14 +219,14 @@ doLevelTag _ sp t =
 doStartBraceGroup :: AlexAction
 doStartBraceGroup _ sp _ = do
   pushScope $ Scope BraceScope sp
-  pure $ Located sp Tok.Lbrace
+  pure $ Located sp Tok.StartBraceGroup
 
 -- | Handle the start of an attribute set. The start of an attribute set opens
 -- an attribute set scope.
 doStartAttrSet :: AlexAction
 doStartAttrSet _ sp _ = do
   pushScope $ Scope AttrSetScope sp
-  pure $ Located sp Tok.Lbracket
+  pure $ Located sp Tok.StartAttrSet
 
 -- | Handle the end of a braced group. The end of a braced group resolves all
 -- layout and level scopes, then resolves a single braced scope. A lexical error
@@ -237,7 +238,7 @@ doEndBraceGroup _ sp _ = do
   resolveScopes scopes
   where
     tokEnd = conVirtual sp
-    tokBrace = Located sp Tok.Rbrace
+    tokBrace = Located sp Tok.EndBraceGroup
     resolveScopes (scope : scopes) = case scopeType scope of
       BraceScope -> do
         setScopeStack scopes
@@ -270,7 +271,7 @@ doEndAttrSet _ sp _ = do
   resolveScopes scopes
   where
     tokEnd = conVirtual sp
-    tokBracket = Located sp Tok.Rbracket
+    tokBracket = Located sp Tok.EndAttrSet
     resolveScopes (scope : scopes) = case scopeType scope of
       AttrSetScope -> do
         setScopeStack scopes
@@ -301,7 +302,7 @@ doLayoutTag _ sp t = case Tok.validEltName tagt of
     ambient <- gets parseStateLayoutDepth
     pushScope $ Scope (LayoutScope layoutDepth ambient) sp
     setLayoutDepth layoutDepth
-    pure $ Located sp $ Tok.AmpTag eltname
+    pure $ Located sp $ Tok.LayoutTag eltname
   Nothing -> throwLexError errSp $ InvalidEltName tagt
   where
     layoutDepth = srcCol $ srcSpanStart sp
@@ -312,7 +313,7 @@ doLayoutTag _ sp t = case Tok.validEltName tagt of
 
 doInlineTag :: AlexAction
 doInlineTag _ sp t = case Tok.validEltName tagt of
-  Just eltname -> pure $ Located sp $ Tok.BackslashTag eltname
+  Just eltname -> pure $ Located sp $ Tok.InlineTag eltname
   Nothing -> throwLexError errSp $ InvalidEltName tagt
   where
     tagt = T.drop 1 t
@@ -329,8 +330,8 @@ doInlineTag _ sp t = case Tok.validEltName tagt of
 -- This action must also look ahead to see if there is an upcoming level tag,
 -- and if so, potentially delay the emission of the indent token to just before
 -- the emission of that level tag.
-doIndent :: AlexAction
-doIndent _ sp t = do
+doBlanks :: AlexAction
+doBlanks _ sp t = do
   scopes <- gets parseStateScopeStack
   currInput <- gets $ alexInput . parseStateInput
   -- delicate handling: if we're just before EOF then any trailing spaces must
@@ -350,7 +351,7 @@ doIndent _ sp t = do
   go upcomingLevelDepth tokLevel (0 :: Int) scopes
   where
     cleanUp Nothing numVirtuals = do
-      let (tok, toks) = replicateVirtuals sp (Tok.Indent t) numVirtuals
+      let (tok, toks) = replicateVirtuals sp (Tok.Blanks t) numVirtuals
       setPendingTokens toks
       pure tok
     -- if we have a pending level scope that would be closed by the upcoming
@@ -368,12 +369,12 @@ doIndent _ sp t = do
           | LevelScope m <- scopeType scope,
             m >= upcomingLevelDepth -> do
             let toks = replicate numVirtuals $ conVirtual sp
-            setPendingIndent $ Located sp $ Tok.Indent t
+            setPendingIndent $ Located sp $ Tok.Blanks t
             setPendingTokens toks
             setScopeStack scopes'
             pure $ conVirtual sp
         _ -> do
-          let (tok, toks) = replicateVirtuals sp (Tok.Indent t) numVirtuals
+          let (tok, toks) = replicateVirtuals sp (Tok.Blanks t) numVirtuals
           setPendingTokens toks
           pure tok
     go upcomingLevelDepth tokLevel !numVirtuals ss@(scope : scopes) = do
@@ -401,12 +402,12 @@ doIndent _ sp t = do
 -- required here is simpler than in 'doIndent', since de-indents are forbidden
 -- within verbatim spans and nothing in a verbatim span can create nested
 -- scopes.
-doVerbatimIndent :: AlexAction
-doVerbatimIndent _ sp t = do
+doVerbatimBlanks :: AlexAction
+doVerbatimBlanks _ sp t = do
   let tokLevel = srcCol $ srcSpanEnd sp
   depth <- gets parseStateLayoutDepth
   if depth < tokLevel
-    then pure $ Located sp $ Tok.Indent t
+    then pure $ Located sp $ Tok.Blanks t
     else do
       mstart <- gets parseStateStartVerbatimLoc
       case mstart of
@@ -454,10 +455,15 @@ replicateVirtuals' sp (Just pending) tok n
       | m == n = (tokEnd, acc [pending, locTok])
       | otherwise = go (m + 1) (acc . (tokEnd :))
 
-doStartVerbatim :: AlexAction
-doStartVerbatim _ sp _ = do
+doStartInlineVerbatim :: AlexAction
+doStartInlineVerbatim _ sp _ = do
   setStartVerbatim sp
-  pure $ Located sp Tok.StartVerbatim
+  pure $ Located sp Tok.StartInlineVerbatim
+
+doEndInlineVerbatim :: AlexAction
+doEndInlineVerbatim _ sp _ = do
+  modify $ \s -> s {parseStatePendingIndent = Nothing}
+  pure $ Located sp Tok.EndInlineVerbatim
 
 -- | Resolve all pending scopes, throwing a lexer error if there are any pending
 -- braced group or attribute set scopes
