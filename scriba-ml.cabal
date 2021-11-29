@@ -30,6 +30,7 @@ library
     alex
   exposed-modules:
     Scriba.Markup.ScribaML.Lexer
-    Scriba.Markup.ScribaML.ParserUtils
+    Scriba.Markup.ScribaML.LexerActions
+    Scriba.Markup.ScribaML.ParserDefs
     Scriba.Markup.ScribaML.Syntax
     Scriba.Markup.ScribaML.Token

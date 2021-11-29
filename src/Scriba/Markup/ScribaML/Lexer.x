@@ -7,7 +7,8 @@ where
 
 
 import Control.Monad.State (MonadState(..))
-import Scriba.Markup.ScribaML.ParserUtils
+import Scriba.Markup.ScribaML.LexerActions
+import Scriba.Markup.ScribaML.ParserDefs
 import Scriba.Markup.ScribaML.Token
 import qualified Data.Text as T
 }
@@ -109,16 +110,16 @@ lexToken = do
                   put $ parsestate {parseStateStartCode = plainTextBeginLine}
                   lexToken
               | otherwise -> do
-                  let nm = getAlexInputSrcName ai
-                  let pos = getAlexInputSrcPos ai
+                  let nm = alexInputSrcName ai
+                  let pos = alexInputSrcPos ai
                   throwLexError (SrcSpan nm pos pos) NoToken
             AlexSkip inp' _ -> setInput inp' *> lexToken
             AlexToken inp' toklen act -> do
-              let initPos = getAlexInputSrcPos inp
-              let finalPos = getAlexInputSrcPos inp'
-              let name = getAlexInputSrcName inp
+              let initPos = alexInputSrcPos inp
+              let finalPos = alexInputSrcPos inp'
+              let name = alexInputSrcName inp
               let posSpan = SrcSpan name initPos finalPos
-              setInput inp' *> act toklen posSpan (T.take toklen $ getAlexInputText inp)
+              setInput inp' *> act toklen posSpan (T.take toklen $ alexInputText inp)
 
 -- | Tokenize the entire input stream
 lexTokens :: Parser [Located Token]
