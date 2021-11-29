@@ -6,7 +6,6 @@ module Scriba.Markup.ScribaML.OtherLexer
 where
 
 
-import Control.Monad.Except (throwError)
 import Control.Monad.State (MonadState(..))
 import Scriba.Markup.ScribaML.ParserUtils
 import Scriba.Markup.ScribaML.Token
@@ -53,7 +52,7 @@ tokens :-
   "\&" { plainTok (Escape EscAnd) `thenCode` plainTextMidLine }
   "\#" { plainTok (Escape EscNum) `thenCode` plainTextMidLine }
 
-  "\`" { plainTok StartVerbatim `thenCode` verbatimPlain }
+  "\`" { doStartVerbatim `thenCode` verbatimPlain }
   "\%" .* { doLineComment `thenCode` plainTextMidLine }
 
   "&" $identish+ { doLayoutTag `thenCode` plainTextMidLine }
@@ -81,7 +80,7 @@ tokens :-
   "\&" { plainTok (Escape EscAnd) `thenCode` plainTextMidLine }
   "\#" { plainTok (Escape EscNum) `thenCode` plainTextMidLine }
 
-  "\`" { plainTok StartVerbatim `thenCode` verbatimPlain }
+  "\`" { doStartVerbatim `thenCode` verbatimPlain }
   "\%" .* { doLineComment }
 
   "&" $identish+ { doLayoutTag }
@@ -100,7 +99,7 @@ tokens :-
 -- | Parse a single token from the input stream
 lexToken :: Parser (Located Token)
 lexToken = do
-  parsestate@(ParseState sc inp toks _ _ _) <- get
+  parsestate@(ParseState sc inp toks _ _ _ _) <- get
   case toks of
     (t:toks') -> put (parsestate { parseStatePendingTokens = toks' }) *> pure t
     _ -> case alexScan inp sc of
@@ -109,7 +108,10 @@ lexToken = do
               | sc == 0 -> do
                   put $ parsestate {parseStateStartCode = plainTextBeginLine}
                   lexToken
-              | otherwise -> throwError $ LexerError $ NoToken $ getAlexInputSrcPos ai
+              | otherwise -> do
+                  let nm = getAlexInputSrcName ai
+                  let pos = getAlexInputSrcPos ai
+                  throwLexError (SrcSpan nm pos pos) NoToken
             AlexSkip inp' _ -> setInput inp' >> lexToken
             AlexToken inp' toklen act -> do
               let initPos = getAlexInputSrcPos inp

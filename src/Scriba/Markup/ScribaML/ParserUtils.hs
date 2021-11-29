@@ -18,6 +18,9 @@ module Scriba.Markup.ScribaML.ParserUtils
     initParseState,
     ParseError (..),
     LexError (..),
+    throwLexError,
+
+    -- ** Lexer actions
     AlexAction,
     thenCode,
     textTok,
@@ -32,6 +35,7 @@ module Scriba.Markup.ScribaML.ParserUtils
     doIndent,
     doVerbatimIndent,
     doLineComment,
+    doStartVerbatim,
     doEOF,
 
     -- * Source positions
@@ -81,6 +85,9 @@ newtype Parser a = Parser
       MonadState ParseState
     )
 
+throwLexError :: SrcSpan -> LexError -> Parser a
+throwLexError sp = throwError . LexerError sp
+
 setInput :: AlexInput -> Parser ()
 setInput ai = modify $ \ps -> ps {parseStateInput = ai}
 
@@ -108,12 +115,20 @@ evalParser = go . evalStateT . unParser
     go f = runExcept . f . initParseState
 
 data ParseState = ParseState
-  { parseStateStartCode :: !Int,
+  { -- | the current lexer code
+    parseStateStartCode :: !Int,
+    -- | the current input
     parseStateInput :: !AlexInput,
+    -- | any pending tokens to be emitted before further consumption of input
     parseStatePendingTokens :: ![Located Token],
+    -- | a possible pending 'Tok.Indent' token before an upcoming 'Tok.NumTag'
     parseStatePendingIndent :: !(Maybe (Located Token)),
+    -- | the current layout depth (ambient indentation)
     parseStateLayoutDepth :: !Int,
-    parseStateScopeStack :: ![Scope]
+    -- | the current stack of scopes
+    parseStateScopeStack :: ![Scope],
+    -- | the location of the start of verbatim span, if we are in one
+    parseStateStartVerbatimLoc :: Maybe SrcSpan
   }
   deriving (Eq, Ord, Show)
 
@@ -147,6 +162,9 @@ setPendingTokens toks = modify $ \s -> s {parseStatePendingTokens = toks}
 
 setPendingIndent :: Located Token -> Parser ()
 setPendingIndent t = modify $ \s -> s {parseStatePendingIndent = Just t}
+
+setStartVerbatim :: SrcSpan -> Parser ()
+setStartVerbatim sp = modify $ \s -> s {parseStateStartVerbatimLoc = Just sp}
 
 -- | Construct a zero-width 'Tok.EndImplicitScope' at the start of the given 'SrcSpan'
 conVirtual :: SrcSpan -> Located Token
@@ -187,7 +205,7 @@ doLevelTag :: AlexAction
 doLevelTag _ sp t =
   case Tok.validEltName tagt of
     Just eltname -> resolveLevelScopes sp level $ Tok.NumberSignTag level eltname
-    Nothing -> throwError $ LexerError $ InvalidEltName $ Located errSp tagt
+    Nothing -> throwLexError errSp $ InvalidEltName tagt
   where
     (nums, tagt) = T.span (== '#') t
     level = T.length nums
@@ -228,8 +246,8 @@ doEndBraceGroup _ sp _ = do
         setLayoutDepth ambient
         resolveScopes' [tokBrace] scopes
       LevelScope _ -> resolveScopes' [tokBrace] scopes
-      AttrSetScope -> throwError $ LexerError AttrBraceMismatch
-    resolveScopes [] = throwError $ LexerError UnmatchedEndBraceGroup
+      AttrSetScope -> throwLexError sp $ AttrBraceMismatch $ scopePos scope
+    resolveScopes [] = throwLexError sp UnmatchedEndBraceGroup
     resolveScopes' acc (scope : scopes) = case scopeType scope of
       BraceScope -> do
         setScopeStack scopes
@@ -239,8 +257,8 @@ doEndBraceGroup _ sp _ = do
         setLayoutDepth ambient
         resolveScopes' (tokEnd : acc) scopes
       LevelScope _ -> resolveScopes' (tokEnd : acc) scopes
-      AttrSetScope -> throwError $ LexerError AttrBraceMismatch
-    resolveScopes' _ [] = throwError $ LexerError UnmatchedEndBraceGroup
+      AttrSetScope -> throwLexError sp $ AttrBraceMismatch $ scopePos scope
+    resolveScopes' _ [] = throwLexError sp UnmatchedEndBraceGroup
 
 -- | Handle the end of an attribute set. The end of an attribute set resolves
 -- all layout and level scopes, then resolves a single attribute set scope. A
@@ -261,8 +279,8 @@ doEndAttrSet _ sp _ = do
         setLayoutDepth ambient
         resolveScopes' [tokBracket] scopes
       LevelScope _ -> resolveScopes' [tokBracket] scopes
-      BraceScope -> throwError $ LexerError BraceAttrMismatch
-    resolveScopes [] = throwError $ LexerError UnmatchedEndAttrSet
+      BraceScope -> throwLexError sp $ BraceAttrMismatch $ scopePos scope
+    resolveScopes [] = throwLexError sp UnmatchedEndAttrSet
     resolveScopes' acc (scope : scopes) = case scopeType scope of
       AttrSetScope -> do
         setScopeStack scopes
@@ -272,8 +290,8 @@ doEndAttrSet _ sp _ = do
         setLayoutDepth ambient
         resolveScopes' (tokEnd : acc) scopes
       LevelScope _ -> resolveScopes' (tokEnd : acc) scopes
-      BraceScope -> throwError $ LexerError BraceAttrMismatch
-    resolveScopes' _ [] = throwError $ LexerError UnmatchedEndAttrSet
+      BraceScope -> throwLexError sp $ BraceAttrMismatch $ scopePos scope
+    resolveScopes' _ [] = throwLexError sp UnmatchedEndAttrSet
 
 -- | Handle the start of a layout block, pushing a new 'LayoutScope' onto the
 -- stack and setting the new layout depth
@@ -284,7 +302,7 @@ doLayoutTag _ sp t = case Tok.validEltName tagt of
     pushScope $ Scope (LayoutScope layoutDepth ambient) sp
     setLayoutDepth layoutDepth
     pure $ Located sp $ Tok.AmpTag eltname
-  Nothing -> throwError $ LexerError $ InvalidEltName $ Located errSp tagt
+  Nothing -> throwLexError errSp $ InvalidEltName tagt
   where
     layoutDepth = srcCol $ srcSpanStart sp
     tagt = T.drop 1 t
@@ -295,7 +313,7 @@ doLayoutTag _ sp t = case Tok.validEltName tagt of
 doInlineTag :: AlexAction
 doInlineTag _ sp t = case Tok.validEltName tagt of
   Just eltname -> pure $ Located sp $ Tok.BackslashTag eltname
-  Nothing -> throwError $ LexerError $ InvalidEltName $ Located errSp tagt
+  Nothing -> throwLexError errSp $ InvalidEltName tagt
   where
     tagt = T.drop 1 t
     errSp = sp {srcSpanStart = spStart {srcCol = srcCol spStart + 1}}
@@ -370,8 +388,8 @@ doIndent _ sp t = do
             go upcomingLevelDepth tokLevel (numVirtuals + 1) scopes
           LevelScope _ ->
             go upcomingLevelDepth tokLevel (numVirtuals + 1) scopes
-          BraceScope -> throwError $ LexerError DeIndentInBracedGroup
-          AttrSetScope -> throwError $ LexerError DeIndentInAttrSet
+          BraceScope -> throwLexError sp $ DeIndentInBracedGroup $ scopePos scope
+          AttrSetScope -> throwLexError sp $ DeIndentInAttrSet $ scopePos scope
         else do
           setScopeStack ss
           cleanUp upcomingLevelDepth numVirtuals
@@ -389,7 +407,11 @@ doVerbatimIndent _ sp t = do
   depth <- gets parseStateLayoutDepth
   if depth < tokLevel
     then pure $ Located sp $ Tok.Indent t
-    else throwError $ LexerError DeIndentInVerbatimSpan
+    else do
+      mstart <- gets parseStateStartVerbatimLoc
+      case mstart of
+        Just spStart -> throwLexError sp $ DeIndentInVerbatimSpan spStart
+        Nothing -> error "internal error - doVerbatimIndent"
 
 -- | Given a 'Token' and the 'SrcSpan' that it spans, create the indicated
 -- number of virtual tokens at the start of the 'SrcSpan', returning the first
@@ -432,6 +454,11 @@ replicateVirtuals' sp (Just pending) tok n
       | m == n = (tokEnd, acc [pending, locTok])
       | otherwise = go (m + 1) (acc . (tokEnd :))
 
+doStartVerbatim :: AlexAction
+doStartVerbatim _ sp _ = do
+  setStartVerbatim sp
+  pure $ Located sp Tok.StartVerbatim
+
 -- | Resolve all pending scopes, throwing a lexer error if there are any pending
 -- braced group or attribute set scopes
 doEOF :: Parser (Located Token)
@@ -440,19 +467,19 @@ doEOF = do
   let sp = getAlexInputSrcPos inp
   let srcSpan = SrcSpan (getAlexInputSrcName inp) sp sp
   scopes <- gets parseStateScopeStack
-  numVirtuals <- getNumVirtuals scopes
+  numVirtuals <- getNumVirtuals srcSpan scopes
   let (tok, toks) = replicateVirtuals srcSpan Tok.TokenEOF numVirtuals
   setPendingTokens toks
   pure tok
   where
-    getNumVirtuals = getNumVirtuals' 0
-    getNumVirtuals' :: Int -> [Scope] -> Parser Int
-    getNumVirtuals' !nv (scope : scopes) = case scopeType scope of
-      LayoutScope _ _ -> getNumVirtuals' (nv + 1) scopes
-      LevelScope _ -> getNumVirtuals' (nv + 1) scopes
-      BraceScope -> throwError $ LexerError UnmatchedStartBraceGroup
-      AttrSetScope -> throwError $ LexerError UnmatchedStartAttrSet
-    getNumVirtuals' !nv [] = pure nv
+    getNumVirtuals x = getNumVirtuals' x 0
+    getNumVirtuals' :: SrcSpan -> Int -> [Scope] -> Parser Int
+    getNumVirtuals' endPos !nv (scope : scopes) = case scopeType scope of
+      LayoutScope _ _ -> getNumVirtuals' endPos (nv + 1) scopes
+      LevelScope _ -> getNumVirtuals' endPos (nv + 1) scopes
+      BraceScope -> throwLexError endPos $ UnmatchedStartBraceGroup (scopePos scope)
+      AttrSetScope -> throwLexError endPos $ UnmatchedStartAttrSet (scopePos scope)
+    getNumVirtuals' _ !nv [] = pure nv
 
 initParseState :: AlexInput -> ParseState
 initParseState ai =
@@ -462,38 +489,54 @@ initParseState ai =
       parseStatePendingTokens = [],
       parseStatePendingIndent = Nothing,
       parseStateLayoutDepth = 0,
-      parseStateScopeStack = []
+      parseStateScopeStack = [],
+      parseStateStartVerbatimLoc = Nothing
     }
 
--- TODO: probably want to add source positions to all of these...
+-- | A possible error that can occur during parsing
 data ParseError
-  = LexerError LexError
+  = -- | source span where the error occurred (see 'LexError'), lexer error
+    LexerError SrcSpan LexError
   deriving (Eq, Ord, Show)
 
+-- | A possible error that can occur in the lexing phase. Note that the meaning
+-- of the 'SrcSpan' of the containing 'ParseError' depends on what the
+-- 'LexError' itself is. The errors 'NoToken', 'UnmatchedEndBraceGroup',
+-- 'UnmatchedEndAttrSet', and 'UnmatchedEndVerbatim' will have a zero-width
+-- 'SrcSpan'; the 'NoTokenError' occurs at the position in input where a token
+-- could not be read, and the three unmatched end errors all occur at the end of
+-- input. The 'SrcSpan' of the remaining errors is the span of the
+-- partially-recognized input (e.g., the span of the 'UnmatchedEndBraceGroup' is
+-- the source position of the end of brace group).
 data LexError
   = -- | lexically invalid element name
-    InvalidEltName (Located Text)
+    InvalidEltName Text
   | -- | a token could not be parsed
-    NoToken SrcPos
-  | -- | a start of brace group was not matched by an end of brace group
-    UnmatchedStartBraceGroup
-  | -- | a start of attribute set was not matched by an end of attribute set
-    UnmatchedStartAttrSet
+    NoToken
+  | -- | a start of brace group was not matched by an end of brace group (span
+    -- of start of brace group)
+    UnmatchedStartBraceGroup SrcSpan
+  | -- | a start of attribute set was not matched by an end of attribute set (span
+    -- of start of attribute set)
+    UnmatchedStartAttrSet SrcSpan
   | -- | an end of brace group was encountered with no matching start of brace
     -- | group
     UnmatchedEndBraceGroup
   | -- | an end of attribute set was encountered with no matching start of attribute set
     UnmatchedEndAttrSet
-  | -- | a start of attribute set was ended by an end of braced group
-    AttrBraceMismatch
-  | -- | a start of braced group was ended by an end of attribute set
-    BraceAttrMismatch
-  | -- | a de-indent occurred in a braced group
-    DeIndentInBracedGroup
-  | -- | a de-indent occurred in an attribute set
-    DeIndentInAttrSet
-  | -- | a de-indent occurred in a verbatim span
-    DeIndentInVerbatimSpan
+  | -- | a start of attribute set was ended by an end of braced group (span of
+    -- start of attribute set)
+    AttrBraceMismatch SrcSpan
+  | -- | a start of braced group was ended by an end of attribute set (span of
+    -- start of braced group )
+    BraceAttrMismatch SrcSpan
+  | -- | a de-indent occurred in a braced group (span of start of braced group)
+    DeIndentInBracedGroup SrcSpan
+  | -- | a de-indent occurred in an attribute set (span of start of attribute
+    -- set)
+    DeIndentInAttrSet SrcSpan
+  | -- | a de-indent occurred in a verbatim span (span of start of verbatim span)
+    DeIndentInVerbatimSpan SrcSpan
   deriving (Eq, Ord, Show)
 
 -- | A position in a 'Char' stream. The 'srcOffset' is the index of the position
