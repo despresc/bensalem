@@ -1,4 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -19,6 +18,8 @@ module Scriba.Markup.ScribaML.ParserDefs
     ParseError (..),
     LexError (..),
     throwLexError,
+    throwParseError,
+    throwParseErrorNil,
 
     -- * Source positions
     SrcPos (..),
@@ -68,6 +69,13 @@ newtype Parser a = Parser
 
 throwLexError :: SrcSpan -> LexError -> Parser a
 throwLexError sp = throwError . LexerError sp
+
+throwParseError :: Maybe (Located Token) -> Parser a
+throwParseError = throwError . ParserError
+
+-- TODO will want to replace uses of this with something more informative!
+throwParseErrorNil :: Parser a
+throwParseErrorNil = throwParseError Nothing
 
 setInput :: AlexInput -> Parser ()
 setInput ai = modify $ \ps -> ps {parseStateInput = ai}
@@ -127,6 +135,8 @@ data ScopeType
 data ParseError
   = -- | source span where the error occurred (see 'LexError'), lexer error
     LexerError SrcSpan LexError
+  | -- | temporary - includes last-parsed token if possible (I think)
+    ParserError (Maybe (Located Token))
   deriving (Eq, Ord, Show)
 
 -- | A possible error that can occur in the lexing phase. Note that the meaning

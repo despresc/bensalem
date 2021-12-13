@@ -358,7 +358,9 @@ replicateVirtuals' sp (Just pending) tok n
   | n <= 0 = (pending, [locTok])
   | otherwise = go 1 id
   where
-    tokEnd = conVirtual sp
+    -- importantly, we want all of the emitted EndImplicitScope tokens to be
+    -- located just before the optional pending token, not the passed token.
+    tokEnd = conVirtual $ locatedSpan pending
     locTok = Located sp tok
     go m acc
       | m == n = (tokEnd, acc [pending, locTok])

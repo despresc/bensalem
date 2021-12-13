@@ -28,7 +28,7 @@ data Token
   | LayoutTag !EltName
   | StartInlineVerbatim
   | -- | any text other than a newline, space, or backtick
-    VerbatimPlainText !Text
+    InlineVerbatimText !Text
   | -- | the literal @``@ in a verbatim context
     VerbatimBacktick
   | EndInlineVerbatim
@@ -73,7 +73,7 @@ renderToken (InlineTag t) = "\\" <> t
 renderToken (LevelTag n t) = T.replicate n "#" <> t
 renderToken (LayoutTag t) = "&" <> t
 renderToken StartInlineVerbatim = "\\`"
-renderToken (VerbatimPlainText t) = t
+renderToken (InlineVerbatimText t) = t
 renderToken VerbatimBacktick = "``"
 renderToken EndInlineVerbatim = "`/"
 renderToken StartBraceGroup = "{"

@@ -44,6 +44,7 @@ tokens :-
   "[" { doStartAttrSet `thenCode` plainTextMidLine }
   "]" { doEndAttrSet `thenCode` plainTextMidLine }
   "=" { plainTok Equals `thenCode` plainTextMidLine }
+  "," { plainTok Comma `thenCode` plainTextMidLine }
 
   "\\" { plainTok (Escape EscBackslash) `thenCode` plainTextMidLine }
   "\{" { plainTok (Escape EscLbrace) `thenCode` plainTextMidLine }
@@ -72,6 +73,7 @@ tokens :-
   "[" { doStartAttrSet }
   "]" { doEndAttrSet }
   "=" { plainTok Equals }
+  "," { plainTok Comma }
 
   "\\" { plainTok $ Escape EscBackslash }
   "\{" { plainTok $ Escape EscLbrace }
@@ -89,7 +91,8 @@ tokens :-
 }
 
 <verbatimPlain> {
-  $verbatimPlain+ { textTok VerbatimPlainText }
+  $verbatimPlain+ { textTok InlineVerbatimText }
+  \ + { \toklen spn _ -> pure $ Located spn $ LineSpace toklen }
   @indent { doVerbatimBlanks }
   "``" { plainTok $ VerbatimBacktick }
   "`/" { doEndInlineVerbatim `thenCode` plainTextMidLine }

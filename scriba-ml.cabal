@@ -26,11 +26,13 @@ library
     mtl,
     text,
     array,
-  build-tools:
-    alex
+  build-tool-depends:
+    alex:alex,
+    happy:happy
   exposed-modules:
     Scriba.Markup.ScribaML.Lexer
     Scriba.Markup.ScribaML.LexerActions
+    Scriba.Markup.ScribaML.Parser
     Scriba.Markup.ScribaML.ParserDefs
     Scriba.Markup.ScribaML.Syntax
     Scriba.Markup.ScribaML.Token
