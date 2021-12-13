@@ -1,4 +1,12 @@
 {
+-- |
+-- Description : Scriba document parser
+-- Copyright   : 2021 Christian Despres
+-- License     : BSD-2-Clause
+-- Maintainer  : Christian Despres
+--
+-- The main document parser
+
 module Scriba.Markup.ScribaML.Parser
   (parseNodes) where
 
