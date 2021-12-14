@@ -43,9 +43,7 @@ elements, for that matter)?
 %token
   text { Located _ (Tok.PlainText _) }
   equals { Located _ Tok.Equals }
-  insigEquals { Located _ Tok.Equals }
   comma { Located _ Tok.Comma }
-  insigComma { Located _ Tok.Comma }
   esc { Located _ (Tok.Escape _) }
   blanks { Located _ (Tok.Blanks _) }
   lineSpace { Located _ (Tok.LineSpace _) }
@@ -61,16 +59,15 @@ elements, for that matter)?
   endBrace { Located _ Tok.EndBraceGroup }
   startAttr { Located _ Tok.StartAttrSet }
   endAttr { Located _ Tok.EndAttrSet }
-  endLayoutScope { Located _ Tok.EndImplicitScope }
-  endLevelScope { Located _ Tok.EndImplicitScope }
+  endImplicitScope { Located _ Tok.EndImplicitScope }
 
 %%
 
 -- a top-level node
 MixedContentNode :: { NodesBuilder }
   : text { text (getPlainText $1) }
-  | insigComma { insigComma (locatedSpan $1) }
-  | insigEquals { insigEquals (locatedSpan $1) }
+  | comma { insigComma (locatedSpan $1) }
+  | equals { insigEquals (locatedSpan $1) }
   | esc { escapeSequence (getEscape $1) }
   | lineSpace { lineSpace (getLineSpace $1) }
   | blanks { blanks (getBlanks $1) }
@@ -101,10 +98,10 @@ InlineElement :: { ElementBuilder }
   : inlineTag { inlineElement (getInlineTag $1) }
 
 LevelElement :: { ElementBuilder }
-  : levelTag MixedContent endLevelScope { levelElement (getLevelTag $1) $2 }
+  : levelTag MixedContent endImplicitScope { levelElement (getLevelTag $1) $2 }
 
 LayoutElement :: { ElementBuilder }
-  : layoutTag MixedContent endLayoutScope { layoutElement (getLayoutTag $1) $2 }
+  : layoutTag MixedContent endImplicitScope { layoutElement (getLayoutTag $1) $2 }
 
 AttrSetNode :: { NodesBuilder }
   : startAttr AttrSpaces AttrContent endAttr { attrSetNode (locatedSpan $1) $3 (locatedSpan $4) }
@@ -135,6 +132,8 @@ AttrVal :: { AttrValBuilder }
 --set, or space, to avoid ambiguity.
 FirstOpenAttrNode :: { NodesBuilder }
   : text { text (getPlainText $1) }
+  | comma { insigComma (locatedSpan $1) }
+  | equals { insigEquals (locatedSpan $1) }
   | esc { escapeSequence (getEscape $1) }
   | ElementNode { $1 }
   | VerbatimNode { $1 }
