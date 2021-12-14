@@ -80,8 +80,8 @@ tokens :-
   "\}" { plainTok $ Escape EscRbrace }
   "\[" { plainTok $ Escape EscLbracket }
   "\]" { plainTok $ Escape EscRbracket }
-  "\&" { plainTok (Escape EscAnd) `thenCode` plainTextMidLine }
-  "\#" { plainTok (Escape EscNum) `thenCode` plainTextMidLine }
+  "\&" { plainTok $ Escape EscAnd }
+  "\#" { plainTok $ Escape EscNum }
 
   "\`" { doStartInlineVerbatim `thenCode` verbatimPlain }
   "\%" .* { doLineComment }
