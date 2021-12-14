@@ -16,7 +16,7 @@ import qualified Data.Text as T
 $specialchar = [\\ \[ \]  \{ \} = \  \n \, \# &]
 $whitespace = [\  \n]
 $plaintext = $printable # $specialchar
-$identish = $printable # [ \[ \] \{ \} ]
+$identish = $printable # [ \[ \] \{ \} \  \n]
 $verbatimPlain = [^ \  \n `]
 $backslash = [\\]
 $inlineStarter = $identish # [` \% \# &]

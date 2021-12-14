@@ -34,5 +34,5 @@ library
     Scriba.Markup.ScribaML.LexerActions
     Scriba.Markup.ScribaML.Parser
     Scriba.Markup.ScribaML.ParserDefs
-    Scriba.Markup.ScribaML.Syntax
+    Scriba.Markup.ScribaML.Syntax.Intermediate
     Scriba.Markup.ScribaML.Token

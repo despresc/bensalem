@@ -10,7 +10,7 @@
 module Scriba.Markup.ScribaML.Parser
   (parseNodes) where
 
-import Scriba.Markup.ScribaML.Syntax
+import Scriba.Markup.ScribaML.Syntax.Intermediate
 import Scriba.Markup.ScribaML.ParserDefs
   (Located(..),
    Parser,

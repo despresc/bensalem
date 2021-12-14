@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
--- Description : Scriba document syntax
+-- Description : Intermediate scriba document syntax
 -- Copyright   : 2021 Christian Despres
 -- License     : BSD-2-Clause
 -- Maintainer  : Christian Despres
@@ -10,8 +10,9 @@
 -- Types respresenting the surface syntax of a scriba document. Note that these
 -- types do not represent source documents exactly; they discard information
 -- like the precise indentation contexts of layout elements or the exact levels
--- of level elements.
-module Scriba.Markup.ScribaML.Syntax
+-- of level elements. They also do not collect all the relevant parts of
+-- elements together.
+module Scriba.Markup.ScribaML.Syntax.Intermediate
   ( -- * Intermediate syntax types
     Node (..),
     Element (..),
