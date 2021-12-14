@@ -25,7 +25,7 @@ module Scriba.Markup.ScribaML.Syntax.Intermediate
     Builder (..),
     MinCol (..),
     NodesBuilder,
-    NodesCombine(..),
+    NodesCombine (..),
     text,
     insigComma,
     insigEquals,
@@ -235,7 +235,14 @@ blanks (Located _ t) =
       builderVal = NodesCombine $ Seq.fromList chunks
     }
   where
-    chunks = concatMap go $ T.lines t
+    -- slightly different behaviour from Text.lines, since that function doesn't
+    -- handle trailing newlines the way it's needed to here
+    customLines x
+      | T.null x = []
+      | otherwise = begin : customLines end
+      where
+        (begin, end) = T.break (== '\n') $ T.drop 1 x
+    chunks = concatMap go $ customLines t
     go x
       | n <= 0 = [LineEnd]
       | otherwise = [LineEnd, LineSpace n]
