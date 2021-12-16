@@ -208,6 +208,8 @@ data Located a = Located
 -- | The input for alex, keeping track of 'Text' input as if it were a stream of
 -- bytes in the UTF-8 encoding, and also the current position in the input and
 -- tab width.
+
+-- TODO: should make this opaque
 data AlexInput = AlexInput
   { alexInputTabWidth :: !Int,
     alexInputSrcName :: !Text,

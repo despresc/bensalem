@@ -296,7 +296,7 @@ levelElement nm nb =
     elt =
       Element (locatedSpan nm) (locatedVal nm) $
         LevelScopeContent $
-          unNodesCombine $ builderVal nb
+          stripAllEndSpace $ unNodesCombine $ builderVal nb
 
 layoutElement :: Located EltName -> NodesBuilder -> ElementBuilder
 layoutElement nm nb =
@@ -309,7 +309,7 @@ layoutElement nm nb =
     elt =
       Element (locatedSpan nm) (locatedVal nm) $
         LayoutScopeContent $
-          unNodesCombine $ builderVal nb
+          stripEndBlank $ unNodesCombine $ builderVal nb
 
 element :: ElementBuilder -> NodesBuilder
 element (Builder n v) = Builder n $ singleNode $ ElementNode v
