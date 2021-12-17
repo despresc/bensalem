@@ -73,6 +73,9 @@ setPendingTokens toks = modify $ \s -> s {parseStatePendingTokens = toks}
 setPendingIndent :: Located Token -> Parser ()
 setPendingIndent t = modify $ \s -> s {parseStatePendingIndent = Just t}
 
+clearPendingIndent :: Parser ()
+clearPendingIndent = modify $ \s -> s {parseStatePendingIndent = Nothing}
+
 setStartVerbatim :: SrcSpan -> Parser ()
 setStartVerbatim sp = modify $ \s -> s {parseStateStartVerbatimLoc = Just sp}
 
@@ -95,6 +98,7 @@ resolveLevelScopes spn n tok = do
   pendingIndent <- gets parseStatePendingIndent
   let (emitTok, toks) = replicateVirtuals' spn pendingIndent tok pendingTokLen
   setPendingTokens toks
+  clearPendingIndent
   pure emitTok
   where
     popLevelLen = popLevelLen' (0 :: Int)

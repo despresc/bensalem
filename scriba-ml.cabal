@@ -26,6 +26,7 @@ library
     mtl,
     text,
     array,
+    prettyprinter,
   build-tool-depends:
     alex:alex,
     happy:happy
@@ -37,3 +38,19 @@ library
     Scriba.Markup.ScribaML.Syntax
     Scriba.Markup.ScribaML.Syntax.Intermediate
     Scriba.Markup.ScribaML.Token
+
+test-suite test
+  import: base
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  hs-source-dirs:
+    test
+  build-depends:
+    QuickCheck,
+    scriba,
+    tasty,
+    tasty-golden,
+    bytestring,
+    text
+  other-modules:
+    Scriba.Markup.ScribaML.TokenSpec

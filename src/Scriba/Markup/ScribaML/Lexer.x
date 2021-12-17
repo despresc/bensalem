@@ -13,10 +13,12 @@ import Scriba.Markup.ScribaML.Token
 import qualified Data.Text as T
 }
 
-$specialchar = [\\ \[ \]  \{ \} = \  \n \, \# &]
+$startLineSpecialChar = [\\ \[ \]  \{ \} = \  \n \, \# &]
+$midLineSpecialChar = $startLineSpecialChar # [\#]
 $whitespace = [\  \n]
-$plaintext = $printable # $specialchar
-$identish = $printable # [ \[ \] \{ \} \  \n]
+$startLinePlainText = $printable # $startLineSpecialChar
+$midLinePlainText = $printable # $midLineSpecialChar
+$identish = $printable # [ \[ \] \{ \} \  \n \\]
 $verbatimPlain = [^ \  \n `]
 $backslash = [\\]
 $inlineStarter = $identish # [` \% \# &]
@@ -37,7 +39,7 @@ tokens :-
 -- recognize level tags
 
 <plainTextBeginLine> {
-  $plaintext+ { textTok PlainText `thenCode` plainTextMidLine }
+  $startLinePlainText+ { textTok PlainText `thenCode` plainTextMidLine }
 
   "{" { doStartBraceGroup `thenCode` plainTextMidLine }
   "}" { doEndBraceGroup `thenCode` plainTextMidLine }
@@ -63,7 +65,7 @@ tokens :-
 }
 
 <plainTextMidLine> {
-  $plaintext+ { textTok PlainText }
+  $midLinePlainText+ { textTok PlainText }
 
   \ + { \toklen spn _ -> pure $ Located spn $ LineSpace toklen }
   @indent { doBlanks `thenCode` plainTextBeginLine}

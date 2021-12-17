@@ -1,0 +1,26 @@
+{ testcases }
+
+[ various       =,escapes { \#\&\\\]\[\{\} } ]
+
+#leveltag and insignificant #
+
+##anotherleveltag
+
+&layouttag
+  [content]
+
+    &subtag
+      {content}
+      #leveltagmore
+
+      ##leveltag4
+
+
+      #leveltag5
+   &othersub
+
+###thirdtag
+
+#extratag
+
+\inlineelt
