@@ -21,12 +21,12 @@ library
   import: base
   hs-source-dirs: src
   build-depends:
+    array,
     containers,
     megaparsec,
     mtl,
-    text,
-    array,
     prettyprinter,
+    text,
   build-tool-depends:
     alex:alex,
     happy:happy
@@ -47,10 +47,14 @@ test-suite test
     test
   build-depends:
     QuickCheck,
+    bytestring,
+    pretty-simple,
     scriba,
     tasty,
     tasty-golden,
-    bytestring,
-    text
+    tasty-hunit,
+    text,
   other-modules:
+    Scriba.Markup.ScribaML.SyntaxSpec
     Scriba.Markup.ScribaML.TokenSpec
+    Test.Common

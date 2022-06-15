@@ -1,0 +1,14 @@
+#scriba
+  [ title = The scriba manual
+  ]
+
+##section [ title = Introduction ]
+
+&p This document will in time be expanded to a full discussion of the scriba
+   markup language and library system. It's written in syntactically-valid
+   scriba, with suggestive (but presently undefined) element names.
+
+##section [ title = Syntax reference ]
+
+&p Scriba, like other mixed-content markup languages, is a programming language
+   with unmarked strings and marked commands.

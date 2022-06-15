@@ -1,0 +1,26 @@
+#s indent
+   and
+      more
+    words
+ here
+
+#s
+  indent
+    and
+      more
+     words
+ here
+  again
+
+#s [] indent
+  more
+    here
+   a
+
+#s [
+  ]  indent
+    more
+
+#s [
+  ] indent
+      more

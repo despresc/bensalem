@@ -1,0 +1,237 @@
+[ ElementNode
+ ( Element
+  { elementTagPos = SrcSpan
+   { srcSpanName = ""
+   , srcSpanStart = SrcPos
+    { srcOffset = 0
+    , srcLine = 1
+    , srcCol = 1
+    }
+   , srcSpanEnd = SrcPos
+    { srcOffset = 2
+    , srcLine = 1
+    , srcCol = 3
+    }
+   }
+  , elementName = "s"
+  , elementAttrs = Nothing
+  , elementArgs =
+   [ ElementArg
+    { elementArgTy = ElementArgBody
+    , elementArgContent =
+     [ PlainText "indent"
+     , LineEnd
+     , LineSpace 2
+     , PlainText "and"
+     , LineEnd
+     , LineSpace 5
+     , PlainText "more"
+     , LineEnd
+     , LineSpace 3
+     , PlainText "words"
+     , LineEnd
+     , PlainText "here"
+     ]
+    }
+   ]
+  }
+ )
+, LineEnd
+, LineEnd
+, ElementNode
+ ( Element
+  { elementTagPos = SrcSpan
+   { srcSpanName = ""
+   , srcSpanStart = SrcPos
+    { srcOffset = 45
+    , srcLine = 7
+    , srcCol = 1
+    }
+   , srcSpanEnd = SrcPos
+    { srcOffset = 47
+    , srcLine = 7
+    , srcCol = 3
+    }
+   }
+  , elementName = "s"
+  , elementAttrs = Nothing
+  , elementArgs =
+   [ ElementArg
+    { elementArgTy = ElementArgBody
+    , elementArgContent =
+     [ PlainText "indent"
+     , LineEnd
+     , LineSpace 3
+     , PlainText "and"
+     , LineEnd
+     , LineSpace 5
+     , PlainText "more"
+     , LineEnd
+     , LineSpace 4
+     , PlainText "words"
+     , LineEnd
+     , PlainText "here"
+     , LineEnd
+     , LineSpace 1
+     , PlainText "again"
+     ]
+    }
+   ]
+  }
+ )
+, LineEnd
+, LineEnd
+, ElementNode
+ ( Element
+  { elementTagPos = SrcSpan
+   { srcSpanName = ""
+   , srcSpanStart = SrcPos
+    { srcOffset = 102
+    , srcLine = 15
+    , srcCol = 1
+    }
+   , srcSpanEnd = SrcPos
+    { srcOffset = 104
+    , srcLine = 15
+    , srcCol = 3
+    }
+   }
+  , elementName = "s"
+  , elementAttrs = Just
+   ( Located
+    { locatedSpan = SrcSpan
+     { srcSpanName = ""
+     , srcSpanStart = SrcPos
+      { srcOffset = 105
+      , srcLine = 15
+      , srcCol = 4
+      }
+     , srcSpanEnd = SrcPos
+      { srcOffset = 107
+      , srcLine = 15
+      , srcCol = 6
+      }
+     }
+    , locatedVal = AttrMap
+     { unAttrMap = fromList [] }
+    }
+   )
+  , elementArgs =
+   [ ElementArg
+    { elementArgTy = ElementArgBody
+    , elementArgContent =
+     [ PlainText "indent"
+     , LineEnd
+     , PlainText "more"
+     , LineEnd
+     , LineSpace 2
+     , PlainText "here"
+     , LineEnd
+     , LineSpace 1
+     , PlainText "a"
+     ]
+    }
+   ]
+  }
+ )
+, LineEnd
+, LineEnd
+, ElementNode
+ ( Element
+  { elementTagPos = SrcSpan
+   { srcSpanName = ""
+   , srcSpanStart = SrcPos
+    { srcOffset = 137
+    , srcLine = 20
+    , srcCol = 1
+    }
+   , srcSpanEnd = SrcPos
+    { srcOffset = 139
+    , srcLine = 20
+    , srcCol = 3
+    }
+   }
+  , elementName = "s"
+  , elementAttrs = Just
+   ( Located
+    { locatedSpan = SrcSpan
+     { srcSpanName = ""
+     , srcSpanStart = SrcPos
+      { srcOffset = 140
+      , srcLine = 20
+      , srcCol = 4
+      }
+     , srcSpanEnd = SrcPos
+      { srcOffset = 145
+      , srcLine = 21
+      , srcCol = 4
+      }
+     }
+    , locatedVal = AttrMap
+     { unAttrMap = fromList [] }
+    }
+   )
+  , elementArgs =
+   [ ElementArg
+    { elementArgTy = ElementArgBody
+    , elementArgContent =
+     [ PlainText "indent"
+     , LineEnd
+     , LineSpace 2
+     , PlainText "more"
+     ]
+    }
+   ]
+  }
+ )
+, LineEnd
+, LineEnd
+, ElementNode
+ ( Element
+  { elementTagPos = SrcSpan
+   { srcSpanName = ""
+   , srcSpanStart = SrcPos
+    { srcOffset = 164
+    , srcLine = 24
+    , srcCol = 1
+    }
+   , srcSpanEnd = SrcPos
+    { srcOffset = 166
+    , srcLine = 24
+    , srcCol = 3
+    }
+   }
+  , elementName = "s"
+  , elementAttrs = Just
+   ( Located
+    { locatedSpan = SrcSpan
+     { srcSpanName = ""
+     , srcSpanStart = SrcPos
+      { srcOffset = 167
+      , srcLine = 24
+      , srcCol = 4
+      }
+     , srcSpanEnd = SrcPos
+      { srcOffset = 172
+      , srcLine = 25
+      , srcCol = 4
+      }
+     }
+    , locatedVal = AttrMap
+     { unAttrMap = fromList [] }
+    }
+   )
+  , elementArgs =
+   [ ElementArg
+    { elementArgTy = ElementArgBody
+    , elementArgContent =
+     [ PlainText "indent"
+     , LineEnd
+     , LineSpace 4
+     , PlainText "more"
+     ]
+    }
+   ]
+  }
+ )
+]

@@ -9,8 +9,6 @@ module Scriba.Markup.ScribaML.TokenSpec where
 
 import qualified Data.ByteString.Lazy as LBS
 import Data.Text (Text)
-import qualified Data.Text.IO as T
-import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Encoding as TLE
 import Scriba.Markup.ScribaML.Lexer (lexTokens)
 import Scriba.Markup.ScribaML.ParserDefs
@@ -21,11 +19,8 @@ import Scriba.Markup.ScribaML.ParserDefs
     evalParser,
     initAlexInput,
   )
+import Test.Common
 import Test.Tasty
-import Test.Tasty.Golden (goldenVsString)
-
-tlshow :: Show a => a -> TL.Text
-tlshow = TL.pack . show
 
 spec :: TestTree
 spec =
@@ -42,11 +37,6 @@ lexTokens' inp = go <$> evalParser lexTokens (initAlexInput 2 "<test>" inp)
     showSrcSpan (SrcSpan _ start end) = showPos start <> showPos end
     showLocTok (Located sp tok) = showSrcSpan sp <> " " <> tlshow tok <> "\n"
 
-selectRight :: (b -> String) -> (a -> Either b c) -> a -> IO c
-selectRight shw f a = case f a of
-  Left e -> error $ shw e
-  Right c -> pure c
-
 goldenTests :: TestTree
 goldenTests =
   testGroup
@@ -54,8 +44,5 @@ goldenTests =
     [tokenGolden]
   where
     base = "./test/golden/Scriba/Markup/ScribaML/TokenSpec/"
-    gold name desc act =
-      goldenVsString (name <> ": " <> desc) (base <> name <> ".golden") $ do
-        t <- T.readFile $ base <> name <> ".input"
-        act t
-    tokenGolden = gold "token" "tokenized properly" $ selectRight show lexTokens'
+    gold = goldWith base "scb" "token"
+    tokenGolden = gold "tokenized properly" $ selectRight show lexTokens'

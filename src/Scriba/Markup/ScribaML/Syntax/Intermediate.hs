@@ -84,6 +84,8 @@ may also be worthwhile to have the lexer keep track of the minimum columns along
 with the scopes so that information can be reported in the closing token. would
 probably save a decent amount of computation.
 
+may want to change parsing model so that tokens keep track of their trailing
+whitespace. could simplify the happy grammar.
 -}
 
 -- | A single node in scriba syntax
@@ -292,11 +294,12 @@ levelElement nm nb =
       builderVal = elt
     }
   where
-    n = spanMinCol (locatedSpan nm) <> builderMinCol nb
+    internalIndent = builderMinCol nb
+    n = spanMinCol (locatedSpan nm) <> internalIndent
     elt =
       Element (locatedSpan nm) (locatedVal nm) $
         LevelScopeContent $
-          stripAllEndSpace $ unNodesCombine $ builderVal nb
+          mstripIndent internalIndent $ stripAllEndSpace $ unNodesCombine $ builderVal nb
 
 layoutElement :: Located EltName -> NodesBuilder -> ElementBuilder
 layoutElement nm nb =
@@ -305,11 +308,12 @@ layoutElement nm nb =
       builderVal = elt
     }
   where
-    n = spanMinCol (locatedSpan nm) <> builderMinCol nb
+    internalIndent = builderMinCol nb
+    n = spanMinCol (locatedSpan nm) <> internalIndent
     elt =
       Element (locatedSpan nm) (locatedVal nm) $
         LayoutScopeContent $
-          stripEndBlank $ unNodesCombine $ builderVal nb
+          mstripIndent internalIndent $ stripEndBlank $ unNodesCombine $ builderVal nb
 
 element :: ElementBuilder -> NodesBuilder
 element (Builder n v) = Builder n $ singleNode $ ElementNode v
@@ -480,10 +484,10 @@ stripAllEndSpace x = x
 -- blank line, an optional leading blank line, and all indentation in excess of
 -- the 'builderMinCol'.
 resolveBracedNodes :: NodesBuilder -> [Node]
-resolveBracedNodes nb = mstripIndent (builderMinCol nb) $
-  case toList $ stripEndBlank $ unNodesCombine $ builderVal nb of
-    LineSpace _ : LineEnd : xs -> xs
-    LineEnd : xs -> xs
+resolveBracedNodes nb = toList $ mstripIndent (builderMinCol nb) $
+  case stripEndBlank $ unNodesCombine $ builderVal nb of
+    LineSpace _ :<| LineEnd :<| xs -> xs
+    LineEnd :<| xs -> xs
     x -> x
 
 {- TODO: will want to rescue this for the intermediate -> full syntax conversion
@@ -534,19 +538,19 @@ resolveUnbracedAttrVal nb =
 
 -- | Strip the common indentation from a list of nodes, the indentation being
 -- given by the minimum column among the nodes
-stripIndent :: Int -> [Node] -> [Node]
+stripIndent :: Int -> Seq Node -> Seq Node
 stripIndent minCol = go
   where
     toStrip = minCol - 1
-    go (LineEnd : LineSpace n : xs) = begin <> go xs
+    go (LineEnd :<| LineSpace n :<| xs) = begin <> go xs
       where
         n' = n - toStrip
         begin
-          | n' <= 0 = [LineEnd]
-          | otherwise = [LineEnd, LineSpace n']
-    go (x : xs) = x : go xs
-    go [] = []
+          | n' <= 0 = LineEnd :<| Empty
+          | otherwise = LineEnd :<| LineSpace n' :<| Empty
+    go (x :<| xs) = x :<| go xs
+    go Empty = Empty
 
-mstripIndent :: MinCol -> [Node] -> [Node]
+mstripIndent :: MinCol -> Seq Node -> Seq Node
 mstripIndent (SomeMinCol n) = stripIndent n
 mstripIndent NoMinCol = id

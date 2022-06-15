@@ -1,0 +1,21 @@
+&p indent
+      in a paragraph
+  like so
+    and more
+
+&p
+  indent
+    in
+   a
+     paragraph
+
+&p [ ]   indent
+    more
+
+&p [ ]   indent
+             more
+
+&p [
+  ] indent
+       and
+      more
