@@ -96,7 +96,7 @@ resolveLevelScopes spn n tok = do
   setScopeStack newScopes
   pushScope $ Scope (LevelScope n) spn
   pendingIndent <- gets parseStatePendingIndent
-  let (emitTok, toks) = replicateVirtuals' spn pendingIndent tok pendingTokLen
+  let (emitTok, toks) = replicateEndImplicitScope' spn pendingIndent tok pendingTokLen
   setPendingTokens toks
   clearPendingIndent
   pure emitTok
@@ -264,7 +264,7 @@ doBlanks _ sp t = do
   go upcomingLevelDepth tokLevel (0 :: Int) scopes
   where
     cleanUp Nothing numVirtuals = do
-      let (tok, toks) = replicateVirtuals sp (Tok.Blanks t) numVirtuals
+      let (tok, toks) = replicateEndImplicitScope sp (Tok.Blanks t) numVirtuals
       setPendingTokens toks
       pure tok
     -- if we have a pending level scope that would be closed by the upcoming
@@ -287,7 +287,7 @@ doBlanks _ sp t = do
             setScopeStack scopes'
             pure $ conVirtual sp
         _ -> do
-          let (tok, toks) = replicateVirtuals sp (Tok.Blanks t) numVirtuals
+          let (tok, toks) = replicateEndImplicitScope sp (Tok.Blanks t) numVirtuals
           setPendingTokens toks
           pure tok
     go upcomingLevelDepth tokLevel !numVirtuals ss@(scope : scopes) = do
@@ -330,12 +330,8 @@ doVerbatimBlanks _ sp t = do
 -- | Given a 'Token' and the 'SrcSpan' that it spans, create the indicated
 -- number of virtual tokens at the start of the 'SrcSpan', returning the first
 -- token to be emitted and a list of pending tokens.
-
--- TODO: might want to verify that this is just flip replicateVirtuals' Nothing,
--- and then delete this function in favour of that construction. Either that or
--- have replicateVirtuals' take a plain Located Token and not a Maybe.
-replicateVirtuals :: SrcSpan -> Token -> Int -> (Located Token, [Located Token])
-replicateVirtuals sp tok n
+replicateEndImplicitScope :: SrcSpan -> Token -> Int -> (Located Token, [Located Token])
+replicateEndImplicitScope sp tok n
   | n <= 0 = (locTok, [])
   | otherwise = go 1 id
   where
@@ -345,24 +341,16 @@ replicateVirtuals sp tok n
       | m == n = (tokEnd, acc [locTok])
       | otherwise = go (m + 1) (acc . (tokEnd :))
 
--- | Like 'replicateVirtuals', but also takes a possibly-pending token to emit
+-- | Like 'replicateEndImplicitScope', but also takes a possibly-pending token to emit
 -- just before the passed token.
-replicateVirtuals' ::
+replicateEndImplicitScope' ::
   SrcSpan ->
   Maybe (Located Token) ->
   Token ->
   Int ->
   (Located Token, [Located Token])
-replicateVirtuals' sp Nothing tok n
-  | n <= 0 = (locTok, [])
-  | otherwise = go 1 id
-  where
-    tokEnd = conVirtual sp
-    locTok = Located sp tok
-    go m acc
-      | m == n = (tokEnd, acc [locTok])
-      | otherwise = go (m + 1) (acc . (tokEnd :))
-replicateVirtuals' sp (Just pending) tok n
+replicateEndImplicitScope' sp Nothing tok n = replicateEndImplicitScope sp tok n
+replicateEndImplicitScope' sp (Just pending) tok n
   | n <= 0 = (pending, [locTok])
   | otherwise = go 1 id
   where
@@ -393,7 +381,7 @@ doEOF = do
   let srcSpan = SrcSpan (alexInputSrcName inp) sp sp
   scopes <- gets parseStateScopeStack
   numVirtuals <- getNumVirtuals srcSpan scopes
-  let (tok, toks) = replicateVirtuals srcSpan Tok.TokenEOF numVirtuals
+  let (tok, toks) = replicateEndImplicitScope srcSpan Tok.TokenEOF numVirtuals
   setPendingTokens toks
   pure tok
   where
