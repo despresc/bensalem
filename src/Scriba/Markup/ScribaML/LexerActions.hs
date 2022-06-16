@@ -330,6 +330,10 @@ doVerbatimBlanks _ sp t = do
 -- | Given a 'Token' and the 'SrcSpan' that it spans, create the indicated
 -- number of virtual tokens at the start of the 'SrcSpan', returning the first
 -- token to be emitted and a list of pending tokens.
+
+-- TODO: might want to verify that this is just flip replicateVirtuals' Nothing,
+-- and then delete this function in favour of that construction. Either that or
+-- have replicateVirtuals' take a plain Located Token and not a Maybe.
 replicateVirtuals :: SrcSpan -> Token -> Int -> (Located Token, [Located Token])
 replicateVirtuals sp tok n
   | n <= 0 = (locTok, [])
