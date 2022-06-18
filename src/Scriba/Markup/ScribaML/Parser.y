@@ -104,10 +104,10 @@ LayoutElement :: { ElementBuilder }
   : layoutTag MixedContent endImplicitScope { layoutElement (getLayoutTag $1) $2 }
 
 AttrSetNode :: { NodesBuilder }
-  : startAttr AttrSpaces AttrContent endAttr { attrSetNode (locatedSpan $1) $3 (locatedSpan $4) }
+  : startAttr Spaces AttrContent endAttr { attrSetNode (locatedSpan $1) $3 (locatedSpan $4) }
 
 AttrSet :: { AttrBuilder }
-  : startAttr AttrSpaces AttrContent endAttr { attrSet (locatedSpan $1) $3 (locatedSpan $4) }
+  : startAttr Spaces AttrContent endAttr { attrSet (locatedSpan $1) $3 (locatedSpan $4) }
 
 AttrContent :: { AttrBuilder }
   : {- empty -} { mempty }
@@ -118,7 +118,7 @@ AttrEntries1 :: { AttrBuilder }
   | AttrEntries1 AttrSep AttrEntry {% addToAttrBuilderM $3 (Just $2) $1 }
 
 AttrEntry :: { AttrBuilderEntry }
-  : AttrKey AttrSpaces equals AttrSpaces AttrVal { AttrBuilderEntry $1 (locatedSpan $3) $5 }
+  : AttrKey Spaces equals Spaces AttrVal { AttrBuilderEntry $1 (locatedSpan $3) $5 }
 
 AttrKey :: { Located AttrKey }
   : text {% resolveAttrKey (getPlainText $1) }
@@ -160,21 +160,21 @@ OpenAttrNode :: { NodesBuilder }
   | VerbatimNode { $1 }
   | AttrSetNode { $1 }
 
-AttrSpace :: { () }
+Space :: { () }
   : lineSpace { () }
   | blanks { () }
   | inlineComment { () }
 
-AttrSpaces :: { () }
+Spaces :: { () }
   : {- empty -} { () }
-  | AttrSpaces1 { () }
+  | Spaces1 { () }
 
-AttrSpaces1 :: { () }
-  : AttrSpace { () }
-  | AttrSpaces1 AttrSpace { () }
+Spaces1 :: { () }
+  : Space { () }
+  | Spaces1 Space { () }
 
 AttrSep :: { SrcSpan }
-  : comma AttrSpaces { locatedSpan $1 }
+  : comma Spaces { locatedSpan $1 }
 
 AttrSepTrailing :: { Maybe SrcSpan }
   : {- empty -} { Nothing }
@@ -198,19 +198,6 @@ InlineVerbatimNode
   : inlineVerbatimText { inlineVerbatimText (getInlineVerbatimText $1) }
   | verbatimBacktick { verbatimBacktick (locatedSpan $1) }
   | blanks { blanks (getBlanks $1) }
-
--- TODO unify this and Spaces1 and their productions with attrspaces etc.?
-Spaces :: { () }
-  : {- empty -} { () }
-  | Spaces1 { () }
-
-Spaces1 :: { () }
-  : lineSpace { () }
-  | blanks { () }
-  | inlineComment { () }
-  | Spaces1 lineSpace { () }
-  | Spaces1 blanks { () }
-  | Spaces1 inlineComment { () }
 
 {
 lexer :: (Located Tok.Token -> Parser a) -> Parser a
