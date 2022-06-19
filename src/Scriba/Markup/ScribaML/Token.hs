@@ -22,25 +22,38 @@ data Token
     Blanks !Text
   | -- | spaces not at the beginning of a line
     LineSpace !Int
-  | LineComment !Text
+  | -- | @\\%comment text continues until just before end of line@
+    LineComment !Text
   | InlineTag !EltName
-  | LevelTag !Int !EltName
-  | LayoutTag !EltName
-  | StartInlineVerbatim
+  | -- | @#tagname@
+    LevelTag !Int !EltName
+  | -- | @&tagname@
+    LayoutTag !EltName
+  | -- | @\\`@
+    StartInlineVerbatim
   | -- | any text other than a newline, space, or backtick
     InlineVerbatimText !Text
   | -- | the literal @``@ in a verbatim context
     VerbatimBacktick
-  | EndInlineVerbatim
-  | StartBraceGroup
-  | EndBraceGroup
-  | StartAttrSet
-  | EndAttrSet
-  | Equals
-  | Comma
-  | EndImplicitScope
-  | -- | the end of file token. should only appear as the final token
-    -- in a stream
+  | -- | @`/@
+    EndInlineVerbatim
+  | -- | @{@
+    StartBraceGroup
+  | -- | @}@
+    EndBraceGroup
+  | -- | @[@
+    StartAttrSet
+  | -- | @]@
+    EndAttrSet
+  | -- | @=@
+    Equals
+  | -- | @,@
+    Comma
+  | -- | virtual token (zero-width, not appearing explicitly in the source)
+    -- denoting the end of content for a level or layout element
+    EndImplicitScope
+  | -- | the end of file token. should only appear as the final token in a
+    -- stream
     TokenEOF
   deriving (Eq, Ord, Show)
 
@@ -97,7 +110,9 @@ type Indent = Int
 -- characters, dashes, and underscores
 type EltName = Text
 
--- | Tests whether or not the 'Text' is a valid 'EltName'
+-- | Tests whether or not the 'Text' is a valid 'EltName'. Presently, a valid
+-- 'EltName' is simply a string of alphanumeric characters, dashes, and
+-- underscores.
 validEltName :: Text -> Maybe EltName
 validEltName t
   | T.all isValidChar t = Just t
