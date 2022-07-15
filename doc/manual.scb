@@ -8,6 +8,26 @@
    markup language and library system. It's written in syntactically-valid
    scriba, with suggestive (but presently undefined) element names.
 
+##section [ title = Scriba surface and core languages ]
+
+&p The core of scriba is a minimalist set of markup constructs that can be
+   rendered to a variety of output formats. The surface language is a much
+   larger set of constructs, including user-defined elements that have
+   associated mappings to the core language. With the surface language, the user
+   can create a rich semantic language for their documents that is still widely
+   and easily displayed. Some of the core elements include:
+
+&dl
+  &di Plain text
+  &di Highlights
+  &di Lists
+  &di Tables
+  &di Notes
+  &di Figures
+  &di General textual divisions
+  &di Choice elements
+
+
 ##section [ title = Syntax reference ]
 
 &p Scriba, like other mixed-content markup languages, is a programming language
