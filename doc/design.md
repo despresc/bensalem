@@ -58,9 +58,6 @@ Native markup documents:
 - Import other documents and items. This can be internal, convenience importing
   (splitting a large document into individual files - a source code concept) or
   external importing (e.g., embedding bits of another document as a quotation).
-- Refer (link) and import other documents and items. The distinction is
-  important - mere linking is freer (can form cycles) and is sort of analogous
-  to dynamic linking in programs, while importing is stricter 
 
 Items:
 
@@ -71,7 +68,8 @@ Items:
   binary files (e.g., pictures and graphics) they needs to use.
 - Represent different atomic archival entities and combinations of these:
   images, documents in particular markup languages, sequences of items (these
-  being sub-items of a main item).
+  being sub-items of a main item), entities without content (to represent
+  non-digital things like people or places).
 
 Registries:
 
@@ -93,3 +91,152 @@ Registries:
   may require abandonment of the concept) and how much arises in the
   administration of individual libraries/registries (less bad, can be dealt with
   simply by banning mixed-registry items).
+
+# A brief discussion of the scriba markup syntax
+
+Subject to change. The syntax takes some inspiration from TeX. A document is a
+list of nodes, which are either plain text strings or elements. Elements can
+take one of three forms:
+
+1. The inline form starts with a tag like `\elt`. These have an optional
+   attribute map enclosed in `[]` brackets, and an optional sequence of braced
+   arguments enclosed in `{}` braces.
+2. The indent form starts with a tag like `&elt`. These have optional attributes
+   and arguments, then a "content" argument that must be indented more than the
+   opening tag and continues until either content is reached with the same or
+   lower indentation, or until an enclosing brace scope ends.
+3. The level form starts with a tag like `#elt` or `##elt` at the beginning of a
+   line. These have optional attributes and braced arguments, then a "content"
+   argument that continues until either an element of a not-higher level (the
+   same or fewer `#` symbols) is reached or an enclosing scope ends.
+
+There are line comments that look like `\%comment text` and that remove all
+subsequent text up to (but not including) the next newline from the document.
+There are verbatim spans that look like `` \`verbatim content`/ `` that disable
+the processing of (most) syntactically-relevant characters inside them. Finally,
+there are escape sequences for some syntactically-relevant characters that may
+be used to include these directly in the text.
+
+Examples of the syntax:
+
+```
+#levelElement
+  [attribute = something,
+   anotherAttribute = {something else},
+   mapAttribute = [x=y]
+  ]
+
+The escape sequences are the pairs: \\, \{, \}, \[, \], \&, \#
+These stand for those characters without the initial backslash.
+
+Inline elements look like \elt[attr1=thing]{arg1}{arg2}. If an element has no arguments
+or attributes it can be written like \elt[] or \elt{}.
+
+&indentElement
+  {argument to indent element}
+  {another argument}
+  Final "content" argument that
+     continues until the indentation drops back to the level
+   of the indentElement tag.
+
+   &anotherIndentElement
+     This one is nested within the enclosing indentElement
+   This text is included in indentElement, not anotherIndentElement.
+
+##anotherLevelElement
+
+This entire level element is contained within levelElement, and this sentence is 
+contained in the content of anotherLevelElement.
+
+#finalLevelElement
+{argument to final level element}
+
+Note that finalLevelElement ends the content of the initial levelElement.
+
+Observe that forms can be nested if desired, as in
+
+\elt{an argument
+     &otherelt
+       with an indent element inside of it
+       #lvl
+       and even a level element within that}
+
+Verbatim spans appear like this:
+
+\`Verbatim content that can include characters like & and \ directly without escaping them.
+To include a backtick character, a double-bactick sequence `` can be used.`/
+
+These can always be translated into a form without escape sequences, and the following
+paragraph produces the same text as the verbatim span above:
+
+Verbatim content that can include characters like \& and \\ directly without escaping them.
+To include a backtick character, a double-bactick sequence ` can be used.
+```
+
+Presently the different forms have little semantic relevance; they exist to
+structure document source code in an aesthetically pleasing way, and to control
+certain aspects of whitespace handling. The rules around whitespace and
+indentation are a little complex, but are intended to produce sensible results
+while still allowing for precise whitespace handling when necessary. In more
+detail:
+
+- Whitespace here means either the single space ASCII character (one or more of
+  these is "line space") or a line ending. We don't presently force a particular
+  line ending sequence, but we likely will in future; for now, we take whatever
+  the Haskell `text` library gives us as source text, which in practice means
+  that any of the sequences `\n\r`, `\n`, and `\r` (or indeed the end of input)
+  will end a line.
+- Line space at the beginning of a line is indentation.
+- A line that consists entirely of line space and then a line ending (or end of
+  input) is a blank line.
+- The content of indent elements, level elements, and braced groups all form an
+  *indentation scope*; the common indentation is stripped from each line of
+  these lines.
+- A single initial and terminal blank line is stripped from any braced group, if
+  they exist. This is slightly subtle, since the initial stripped whitespace
+  will look like `<left brace><line space><line end>`, while the terminal
+  stripped whitespace will look like `<line end><line space><right brace>`.
+- All initial and terminal whitespace is stripped from the content of indent
+  elements and level elements.
+- The content of verbatim spans does not form its own indentation scope; a
+  single initial and terminal blank line are stripped from these as with braced
+  groups, but otherwise indentation is stripped according to the enclosing
+  indentation scope, if one exists.
+
+
+Examples of equivalent forms due to the whitespace handling rules:
+
+```
+#levelElt
+  content
+etc.
+
+means the same thing as
+
+#levelElt
+    content
+  etc.
+
+---------
+
+{content}
+means the same thing as
+{
+content
+}
+and
+{content
+}
+
+---------
+
+&elt
+  x
+     y
+    z
+means the same thing as
+&elt
+      x
+         y
+        z
+```
