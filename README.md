@@ -78,8 +78,54 @@ problem in the doctrine of chances* by the Rev. Thomas Bayes:
       event ought to be computed, and the value of the thing expected
       upon \reg{it's}{its} happening.
     &li
-      By {emph|chance} I mean the same as probability.
+      By \emph{chance} I mean the same as probability.
     &li
       Events are independent when the happening of any one of them
       does neither increase nor abate the probability of the rest.
 ```
+
+## Why this and not other things?
+
+I initially envisioned a very particular purpose for this project: to develop
+tools that would allow me to create new digital editions of documents, link them
+together, explore their connections, and have them be rendered to both HTML (in
+a live web view) and TeX (for eventual printing and binding). After having
+thought about the problem, I came to the conclusion that keeping the solution
+tailored narrowly to the individual documents that I wanted to digitize would
+result in significant rigidity in the ultimate design: better instead to create
+a larger, more flexible, yet still coherent system that would accomplish the
+same goals. I haven't yet seen something that accomplishes exactly what I want:
+
+- Markdown as a markup language is not suited to extensibility - it works well
+  as a simple, lightweight language that compiles transparently to HTML, but
+  suffers when more complex semantic constructs are shoehorned into it.
+- XML as a markup language has a heavy, unwieldy syntax. Its main use would be
+  for the ecosystem of standards and tools around it, but I feel that a new
+  system based on modern programming principles (with features like modules,
+  standard packaging and distribution, an improved type system) can improve
+  significantly in this area.
+- Asciidoc and reStructuredText suffer from a combination of the problems of
+  Markdown and XML.
+- TeX is an excellent typesetting engine and is also highly extensible, but is a
+  rather poor programming language. It is of course also geared toward fixed,
+  paginated output, and its semantic constructs are precariously built on top of
+  macros over its typesetting primitives. Past efforts to improve and extend TeX
+  (LuaTeX improving the underlying programming language, formats like OMDoc
+  attempting to improve the semantics in some areas, various converters from TeX
+  to other output formats) still seem inadequate for my goals.
+
+Many of the existing formats still have their merits, and, while they all have
+deficiencies that I believe can be fixed with a new design, their features can
+inform those of Scriba. In particular, TeX, XML formats like those maintained by
+the [Text Encoding Initiative](https://tei-c.org/), and various library and
+archival standards are all rich sources for the ultimate semantics of the markup
+language and the workings of the library system itself.
+
+If the design is ever completely firmed up and the tools are finished (perhaps
+unlikely, since this is only something I work on for fun in my spare time, but
+possible) then the result could be a fine replacement for many different XML
+formats and standards, LaTeX and ConTeXt, a number of different lightweight
+markup languages, and various library and archive systems. It would not really
+replace TeX (and the packages that extend it) as a typesetting engine, nor would
+it replace simple languages like Markdown that are well-suited to their narrow
+domains.
