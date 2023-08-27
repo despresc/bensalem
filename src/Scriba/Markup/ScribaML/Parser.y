@@ -1,24 +1,24 @@
 {
 -- |
--- Description : Scriba document parser
+-- Description : Bensalem document parser
 -- Copyright   : 2021 Christian Despres
 -- License     : BSD-2-Clause
 -- Maintainer  : Christian Despres
 --
 -- The main document parser
 
-module Scriba.Markup.ScribaML.Parser
+module Bensalem.Markup.BensalemML.Parser
   (parseNodes) where
 
-import Scriba.Markup.ScribaML.Syntax.Intermediate
-import Scriba.Markup.ScribaML.ParserDefs
+import Bensalem.Markup.BensalemML.Syntax.Intermediate
+import Bensalem.Markup.BensalemML.ParserDefs
   (Located(..),
    Parser,
    ParseError(..),
    SrcSpan(..),
    throwParseError)
-import qualified Scriba.Markup.ScribaML.Token as Tok
-import Scriba.Markup.ScribaML.Lexer (lexToken)
+import qualified Bensalem.Markup.BensalemML.Token as Tok
+import Bensalem.Markup.BensalemML.Lexer (lexToken)
 
 import Data.Foldable (toList)
 import Control.Monad.Except (throwError)
@@ -203,7 +203,7 @@ InlineVerbatimNode
 lexer :: (Located Tok.Token -> Parser a) -> Parser a
 lexer = (lexToken >>=)
 
--- | Parse a sequence of intermediate scriba nodes at the top level
+-- | Parse a sequence of intermediate bensalem nodes at the top level
 parseNodes :: Parser [Node]
 parseNodes = toList . unNodesCombine . builderVal <$> pManyNodes
 

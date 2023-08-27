@@ -1,14 +1,14 @@
 -- |
--- Description : Scriba document syntax
+-- Description : Bensalem document syntax
 -- Copyright   : 2021 Christian Despres
 -- License     : BSD-2-Clause
 -- Maintainer  : Christian Despres
 --
--- Types respresenting the surface syntax of a scriba document. Note that these
--- types do not represent source documents exactly; they discard information
--- like the precise indentation contexts of layout elements or the exact levels
--- of level elements.
-module Scriba.Markup.ScribaML.Syntax
+-- Types respresenting the surface syntax of a bensalem document. Note that
+-- these types do not represent source documents exactly; they discard
+-- information like the precise indentation contexts of layout elements or the
+-- exact levels of level elements.
+module Bensalem.Markup.BensalemML.Syntax
   ( -- * Syntax types
     Node (..),
     Element (..),
@@ -24,18 +24,18 @@ where
 import Data.Foldable (toList)
 import Data.Map.Strict (Map)
 import Data.Text (Text)
-import qualified Scriba.Markup.ScribaML.Parser as SP
-import Scriba.Markup.ScribaML.ParserDefs
+import qualified Bensalem.Markup.BensalemML.Parser as SP
+import Bensalem.Markup.BensalemML.ParserDefs
   ( Located (..),
     ParseError (..),
     SrcSpan (..),
     evalParser,
     initAlexInput,
   )
-import qualified Scriba.Markup.ScribaML.Syntax.Intermediate as SI
-import Scriba.Markup.ScribaML.Token (EltName)
+import qualified Bensalem.Markup.BensalemML.Syntax.Intermediate as SI
+import Bensalem.Markup.BensalemML.Token (EltName)
 
--- | Parse a sequence of scriba nodes from the given input. These nodes are
+-- | Parse a sequence of bensalem nodes from the given input. These nodes are
 -- assumed to be in the outermost scope of a document (in particular, not in an
 -- indentation or level scope).
 parseNodesTW ::
@@ -50,8 +50,8 @@ parseNodesTW tw nm inp = do
   nodes <- evalParser SP.parseNodes $ initAlexInput tw nm inp
   fromIntermediateNodes nodes
 
--- | Parse a sequence of scriba nodes from the given input with 'parseNodesTW',
--- with a default tab width of 8
+-- | Parse a sequence of bensalem nodes from the given input with
+-- 'parseNodesTW', with a default tab width of 8
 parseNodes ::
   -- | input name
   Text ->
@@ -60,7 +60,7 @@ parseNodes ::
   Either ParseError [Node]
 parseNodes = parseNodesTW 8
 
--- | A single node in scriba syntax
+-- | A single node in bensalem syntax
 data Node
   = -- | normal text not containing line space or newlines
     PlainText !Text

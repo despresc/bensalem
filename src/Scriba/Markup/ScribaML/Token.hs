@@ -1,19 +1,19 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
--- Description : Scriba document tokens
+-- Description : Bensalem document tokens
 -- Copyright   : 2021 Christian Despres
 -- License     : BSD-2-Clause
 -- Maintainer  : Christian Despres
 --
--- The types representing the rough lexical structure of a scriba document.
-module Scriba.Markup.ScribaML.Token where
+-- The types representing the rough lexical structure of a bensalem document.
+module Bensalem.Markup.BensalemML.Token where
 
 import Data.Char (isAlphaNum)
 import Data.Text (Text)
 import qualified Data.Text as T
 
--- | An individual scriba token.
+-- | An individual bensalem token.
 data Token
   = -- | text other than a line ending, space, or special character
     PlainText !Text

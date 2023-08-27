@@ -7,8 +7,8 @@
 -- License     : BSD-2-Clause
 -- Maintainer  : Christian Despres
 --
--- Definitions for the scriba lexer and parser
-module Scriba.Markup.ScribaML.ParserDefs
+-- Definitions for the bensalem lexer and parser
+module Bensalem.Markup.BensalemML.ParserDefs
   ( -- * Parser monad
     Parser (..),
     evalParser,
@@ -54,7 +54,7 @@ import Data.Char (ord)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Word (Word8)
-import Scriba.Markup.ScribaML.Token (Token)
+import Bensalem.Markup.BensalemML.Token (Token)
 
 newtype Parser a = Parser
   { unParser :: StateT ParseState (Except ParseError) a

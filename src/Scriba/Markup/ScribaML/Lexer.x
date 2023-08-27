@@ -1,5 +1,5 @@
 {
-module Scriba.Markup.ScribaML.Lexer
+module Bensalem.Markup.BensalemML.Lexer
   ( lexToken
   , lexTokens
   , alexScan )
@@ -7,9 +7,9 @@ where
 
 
 import Control.Monad.State (MonadState(..))
-import Scriba.Markup.ScribaML.LexerActions
-import Scriba.Markup.ScribaML.ParserDefs
-import Scriba.Markup.ScribaML.Token
+import Bensalem.Markup.BensalemML.LexerActions
+import Bensalem.Markup.BensalemML.ParserDefs
+import Bensalem.Markup.BensalemML.Token
 import qualified Data.Text as T
 }
 

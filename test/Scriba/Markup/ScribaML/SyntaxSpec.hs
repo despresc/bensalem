@@ -5,9 +5,9 @@
 -- Copyright   : 2022 Christian Despres
 -- License     : BSD-2-Clause
 -- Maintainer  : Christian Despres
-module Scriba.Markup.ScribaML.SyntaxSpec where
+module Bensalem.Markup.BensalemML.SyntaxSpec where
 
-import Scriba.Markup.ScribaML.Syntax (parseNodes)
+import Bensalem.Markup.BensalemML.Syntax (parseNodes)
 import Test.Common
 import Test.Tasty
 
@@ -19,7 +19,7 @@ spec =
       indent2
     ]
   where
-    base = "test/golden/Scriba/Markup/ScribaML/SyntaxSpec/"
+    base = "test/golden/Bensalem/Markup/BensalemML/SyntaxSpec/"
     gold = goldWith base "scb"
     parse' = fmap pShowByte . parseNodes ""
     indent1 =

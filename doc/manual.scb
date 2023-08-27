@@ -1,16 +1,16 @@
-#scriba
-  [ title = The scriba manual
+#bensalem
+  [ title = The bensalem manual
   ]
 
 ##section [ title = Introduction ]
 
-&p This document will in time be expanded to a full discussion of the scriba
+&p This document will in time be expanded to a full discussion of the bensalem
    markup language and library system. It's written in syntactically-valid
-   scriba, with suggestive (but presently undefined) element names.
+   bensalem, with suggestive (but presently undefined) element names.
 
-##section [ title = Scriba surface and core languages ]
+##section [ title = Bensalem surface and core languages ]
 
-&p The core of scriba is a minimalist set of markup constructs that can be
+&p The core of bensalem is a minimalist set of markup constructs that can be
    rendered to a variety of output formats. The surface language is a much
    larger set of constructs, including user-defined elements that have
    associated mappings to the core language. With the surface language, the user
@@ -30,5 +30,5 @@
 
 ##section [ title = Syntax reference ]
 
-&p Scriba, like other mixed-content markup languages, is a programming language
-   with unmarked strings and marked commands.
+&p Bensalem, like other mixed-content markup languages, is a programming
+   language with unmarked strings and marked commands.

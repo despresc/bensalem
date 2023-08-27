@@ -2,17 +2,17 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
--- Description : Intermediate scriba document syntax
+-- Description : Intermediate bensalem document syntax
 -- Copyright   : 2021 Christian Despres
 -- License     : BSD-2-Clause
 -- Maintainer  : Christian Despres
 --
--- Types respresenting the surface syntax of a scriba document. Note that these
--- types do not represent source documents exactly; they discard information
--- like the precise indentation contexts of layout elements or the exact levels
--- of level elements. They also do not collect all the relevant parts of
--- elements together.
-module Scriba.Markup.ScribaML.Syntax.Intermediate
+-- Types respresenting the surface syntax of a bensalem document. Note that
+-- these types do not represent source documents exactly; they discard
+-- information like the precise indentation contexts of layout elements or the
+-- exact levels of level elements. They also do not collect all the relevant
+-- parts of elements together.
+module Bensalem.Markup.BensalemML.Syntax.Intermediate
   ( -- * Intermediate syntax types
     Node (..),
     Element (..),
@@ -64,15 +64,15 @@ import Data.Sequence (Seq (..))
 import qualified Data.Sequence as Seq
 import Data.Text (Text)
 import qualified Data.Text as T
-import Scriba.Markup.ScribaML.ParserDefs
+import Bensalem.Markup.BensalemML.ParserDefs
   ( Located (..),
     Parser,
     SrcPos (..),
     SrcSpan (..),
     throwParseErrorNil,
   )
-import Scriba.Markup.ScribaML.Token (EltName)
-import qualified Scriba.Markup.ScribaML.Token as Tok
+import Bensalem.Markup.BensalemML.Token (EltName)
+import qualified Bensalem.Markup.BensalemML.Token as Tok
 
 {-
 
@@ -88,7 +88,7 @@ may want to change parsing model so that tokens keep track of their trailing
 whitespace. could simplify the happy grammar.
 -}
 
--- | A single node in scriba syntax
+-- | A single node in bensalem syntax
 data Node
   = -- | normal text not containing line space or newlines
     PlainText !Text

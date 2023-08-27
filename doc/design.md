@@ -92,7 +92,7 @@ Registries:
   administration of individual libraries/registries (less bad, can be dealt with
   simply by banning mixed-registry items).
 
-# A brief discussion of the scriba markup syntax
+# A brief discussion of the bensalem markup syntax
 
 Subject to change. The syntax takes some inspiration from TeX. A document is a
 list of nodes, which are either plain text strings or elements. Elements can
@@ -241,7 +241,7 @@ means the same thing as
         z
 ```
 
-# Scriba markup language and types
+# Bensalem markup language and types
 
 Documents being some kind of typed functional language. Macros necessary?
 

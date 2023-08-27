@@ -5,13 +5,13 @@
 -- Copyright   : 2021 Christian Despres
 -- License     : BSD-2-Clause
 -- Maintainer  : Christian Despres
-module Scriba.Markup.ScribaML.TokenSpec where
+module Bensalem.Markup.BensalemML.TokenSpec where
 
 import qualified Data.ByteString.Lazy as LBS
 import Data.Text (Text)
 import qualified Data.Text.Lazy.Encoding as TLE
-import Scriba.Markup.ScribaML.Lexer (lexTokens)
-import Scriba.Markup.ScribaML.ParserDefs
+import Bensalem.Markup.BensalemML.Lexer (lexTokens)
+import Bensalem.Markup.BensalemML.ParserDefs
   ( Located (..),
     ParseError,
     SrcPos (..),
@@ -43,6 +43,6 @@ goldenTests =
     "Golden tests"
     [tokenGolden]
   where
-    base = "./test/golden/Scriba/Markup/ScribaML/TokenSpec/"
+    base = "./test/golden/Bensalem/Markup/BensalemML/TokenSpec/"
     gold = goldWith base "scb" "token"
     tokenGolden = gold "tokenized properly" $ selectRight show lexTokens'

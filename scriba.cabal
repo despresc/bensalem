@@ -1,5 +1,5 @@
 cabal-version:       2.4
-name:                scriba
+name:                bensalem
 version:             0.0.1
 synopsis:            Markup language, publishing, and library system tools
 license:             BSD-2-Clause
@@ -31,13 +31,13 @@ library
     alex:alex,
     happy:happy
   exposed-modules:
-    Scriba.Markup.ScribaML.Lexer
-    Scriba.Markup.ScribaML.LexerActions
-    Scriba.Markup.ScribaML.Parser
-    Scriba.Markup.ScribaML.ParserDefs
-    Scriba.Markup.ScribaML.Syntax
-    Scriba.Markup.ScribaML.Syntax.Intermediate
-    Scriba.Markup.ScribaML.Token
+    Bensalem.Markup.BensalemML.Lexer
+    Bensalem.Markup.BensalemML.LexerActions
+    Bensalem.Markup.BensalemML.Parser
+    Bensalem.Markup.BensalemML.ParserDefs
+    Bensalem.Markup.BensalemML.Syntax
+    Bensalem.Markup.BensalemML.Syntax.Intermediate
+    Bensalem.Markup.BensalemML.Token
 
 test-suite test
   import: base
@@ -49,12 +49,12 @@ test-suite test
     QuickCheck,
     bytestring,
     pretty-simple,
-    scriba,
+    bensalem,
     tasty,
     tasty-golden,
     tasty-hunit,
     text,
   other-modules:
-    Scriba.Markup.ScribaML.SyntaxSpec
-    Scriba.Markup.ScribaML.TokenSpec
+    Bensalem.Markup.BensalemML.SyntaxSpec
+    Bensalem.Markup.BensalemML.TokenSpec
     Test.Common

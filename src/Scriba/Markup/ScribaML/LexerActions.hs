@@ -8,8 +8,8 @@
 -- Maintainer  : Christian Despres
 --
 -- The 'AlexAction' type and actions that handle the lexing of tokens in
--- "Scriba.Markup.ScribaML.Lexer"
-module Scriba.Markup.ScribaML.LexerActions
+-- "Bensalem.Markup.BensalemML.Lexer"
+module Bensalem.Markup.BensalemML.LexerActions
   ( AlexAction,
     thenCode,
     textTok,
@@ -36,9 +36,9 @@ import Control.Monad.State.Strict
   )
 import Data.Text (Text)
 import qualified Data.Text as T
-import Scriba.Markup.ScribaML.ParserDefs
-import Scriba.Markup.ScribaML.Token (Token)
-import qualified Scriba.Markup.ScribaML.Token as Tok
+import Bensalem.Markup.BensalemML.ParserDefs
+import Bensalem.Markup.BensalemML.Token (Token)
+import qualified Bensalem.Markup.BensalemML.Token as Tok
 
 -- | The type of alex actions, taking in the length of the token, the span it
 -- occupies in the source input, and the actual 'Text' of the token

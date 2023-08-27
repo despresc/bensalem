@@ -1,9 +1,9 @@
-# Scriba - markup language, publishing, and library tools
+# Bensalem - markup language, publishing, and library tools
 
 This repository will eventually contain a larger suite of tools for publishing
 and cataloguing documents, focusing primarily on historical scientific and other
 technical documents. At the moment it contains a parser for a native markup
-language for the eventual larger scriba system.
+language for the eventual larger bensalem system.
 
 This project exists because of my frustrations with existing markup languages,
 document management systems, and archives. While there is undoubtedly a level of
@@ -116,8 +116,8 @@ same goals. I haven't yet seen something that accomplishes exactly what I want:
 
 Many of the existing formats still have their merits, and, while they all have
 deficiencies that I believe can be fixed with a new design, their features can
-inform those of Scriba. In particular, TeX, XML formats like those maintained by
-the [Text Encoding Initiative](https://tei-c.org/), and various library and
+inform those of bensalem. In particular, TeX, XML formats like those maintained
+by the [Text Encoding Initiative](https://tei-c.org/), and various library and
 archival standards are all rich sources for the ultimate semantics of the markup
 language and the workings of the library system itself.
 
