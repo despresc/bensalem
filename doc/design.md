@@ -240,3 +240,22 @@ means the same thing as
          y
         z
 ```
+
+# Scriba markup language and types
+
+Documents being some kind of typed functional language. Macros necessary?
+
+- support for open unions and row polymorphism. want product types to be sort of
+  nominal - should at least be able to give names to particular shapes of
+  product, if only for documentation. yes, I think nominal. something expecting
+  a `span` alone should reject an element `emph` that is simply a newtype over
+  `span` (hypothetically). of course, should be able to write a function that
+  can take them both (by, say, demanding a particular component or capability
+  that they both have, if not a simple open union of the two).
+
+# Item compiler
+
+- when item X (strongly) depends on item Y, item X should have access to Y and
+  its properties in some easy-to-use, independent format. nix?
+- when item X (weakly) depends on item Y, item X should have access to the
+  external linkage of Y only.
