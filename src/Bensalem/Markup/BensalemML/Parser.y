@@ -51,6 +51,7 @@ elements, for that matter)?
   inlineTag { Located _ (Tok.InlineTag _) }
   levelTag { Located _ (Tok.LevelTag _ _) }
   layoutTag { Located _ (Tok.LayoutTag _) }
+  startLayoutBracedGroup { Located _ Tok.StartLayoutBracedGroup }
   startInlineVerb { Located _ Tok.StartInlineVerbatim }
   inlineVerbatimText { Located _ (Tok.InlineVerbatimText _) }
   verbatimBacktick { Located _ Tok.VerbatimBacktick }
@@ -88,6 +89,10 @@ MixedContent1 :: { NodesBuilder }
 BracedGroup :: { NodesBuilder }
 BracedGroup
   : startBrace MixedContent endBrace { bracedGroup (locatedSpan $1) $2 (locatedSpan $3) }
+
+LayoutBracedGroup :: { NodesBuilder }
+LayoutBracedGroup
+  : startLayoutBracedGroup MixedContent endImplicitScope { layoutBracedGroup (locatedSpan $1) $2 }
 
 ElementNode :: { NodesBuilder }
   : InlineElement { element $1 }

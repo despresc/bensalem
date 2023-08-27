@@ -60,6 +60,7 @@ tokens :-
   "\%" .* { doLineComment `thenCode` plainTextMidLine }
 
   "&" $identish+ { doLayoutTag `thenCode` plainTextMidLine }
+  "&{}" { doStartLayoutBracedGroup `thenCode` plainTextMidLine }
   "\" $inlineStarter $identish* { doInlineTag `thenCode` plainTextMidLine }
   "#"+ $identish+ { doLevelTag `thenCode` plainTextMidLine }
 }
@@ -89,6 +90,7 @@ tokens :-
   "\%" .* { doLineComment }
 
   "&" $identish+ { doLayoutTag }
+  "&{}" { doStartLayoutBracedGroup }
   "\" $inlineStarter $identish* { doInlineTag }
 }
 

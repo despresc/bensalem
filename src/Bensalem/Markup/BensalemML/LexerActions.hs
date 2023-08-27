@@ -16,6 +16,7 @@ module Bensalem.Markup.BensalemML.LexerActions
     plainTok,
     doInlineTag,
     doLayoutTag,
+    doStartLayoutBracedGroup,
     doLevelTag,
     doStartBraceGroup,
     doEndBraceGroup,
@@ -30,15 +31,15 @@ module Bensalem.Markup.BensalemML.LexerActions
   )
 where
 
+import Bensalem.Markup.BensalemML.ParserDefs
+import Bensalem.Markup.BensalemML.Token (Token)
+import qualified Bensalem.Markup.BensalemML.Token as Tok
 import Control.Monad.State.Strict
   ( gets,
     modify,
   )
 import Data.Text (Text)
 import qualified Data.Text as T
-import Bensalem.Markup.BensalemML.ParserDefs
-import Bensalem.Markup.BensalemML.Token (Token)
-import qualified Bensalem.Markup.BensalemML.Token as Tok
 
 -- | The type of alex actions, taking in the length of the token, the span it
 -- occupies in the source input, and the actual 'Text' of the token
@@ -106,7 +107,7 @@ resolveLevelScopes spn n tok = do
       | scope : scopes <- ss,
         LevelScope m <- scopeType scope,
         m >= n =
-        popLevelLen' (len + 1) scopes
+          popLevelLen' (len + 1) scopes
       | otherwise = (len, ss)
 
 -- | Handle a line comment
@@ -224,6 +225,20 @@ doLayoutTag _ sp t = case Tok.validEltName tagt of
       where
         spStart = srcSpanStart sp
 
+-- | Handle the start of a layout block, pushing a new 'LayoutScope' onto the
+-- stack and setting the new layout depth
+
+-- TODO: obvious duplication with doLayoutTag
+doStartLayoutBracedGroup :: AlexAction
+doStartLayoutBracedGroup _ sp _ =
+  do
+    ambient <- gets parseStateLayoutDepth
+    pushScope $ Scope (LayoutScope layoutDepth ambient) sp
+    setLayoutDepth layoutDepth
+    pure $ Located sp Tok.StartLayoutBracedGroup
+  where
+    layoutDepth = srcCol $ srcSpanStart sp
+
 doInlineTag :: AlexAction
 doInlineTag _ sp t = case Tok.validEltName tagt of
   Just eltname -> pure $ Located sp $ Tok.InlineTag eltname
@@ -281,11 +296,11 @@ doBlanks _ sp t = do
         scope : scopes'
           | LevelScope m <- scopeType scope,
             m >= upcomingLevelDepth -> do
-            let toks = replicate numVirtuals $ conVirtual sp
-            setPendingIndent $ Located sp $ Tok.Blanks t
-            setPendingTokens toks
-            setScopeStack scopes'
-            pure $ conVirtual sp
+              let toks = replicate numVirtuals $ conVirtual sp
+              setPendingIndent $ Located sp $ Tok.Blanks t
+              setPendingTokens toks
+              setScopeStack scopes'
+              pure $ conVirtual sp
         _ -> do
           let (tok, toks) = replicateEndImplicitScope sp (Tok.Blanks t) numVirtuals
           setPendingTokens toks

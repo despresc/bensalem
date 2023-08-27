@@ -34,6 +34,7 @@ module Bensalem.Markup.BensalemML.Syntax.Intermediate
     blanks,
     inlineComment,
     bracedGroup,
+    layoutBracedGroup,
     inlineVerbatim,
     inlineVerbatimText,
     verbatimBacktick,
@@ -57,13 +58,6 @@ module Bensalem.Markup.BensalemML.Syntax.Intermediate
   )
 where
 
-import Data.Foldable (toList)
-import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as M
-import Data.Sequence (Seq (..))
-import qualified Data.Sequence as Seq
-import Data.Text (Text)
-import qualified Data.Text as T
 import Bensalem.Markup.BensalemML.ParserDefs
   ( Located (..),
     Parser,
@@ -73,6 +67,13 @@ import Bensalem.Markup.BensalemML.ParserDefs
   )
 import Bensalem.Markup.BensalemML.Token (EltName)
 import qualified Bensalem.Markup.BensalemML.Token as Tok
+import Data.Foldable (toList)
+import Data.Map.Strict (Map)
+import qualified Data.Map.Strict as M
+import Data.Sequence (Seq (..))
+import qualified Data.Sequence as Seq
+import Data.Text (Text)
+import qualified Data.Text as T
 
 {-
 
@@ -97,6 +98,7 @@ data Node
   | -- | a line ending
     LineEnd
   | BracedGroup !SrcSpan ![Node]
+  | LayoutBracedGroup !SrcSpan ![Node]
   | AttrMapNode !SrcSpan !AttrMap
   | ElementNode !Element
   | InlineComment !Text
@@ -269,6 +271,22 @@ bracedGroup sp1 nb sp2 =
   where
     sp = sp1 {srcSpanEnd = srcSpanEnd sp2}
 
+layoutBracedGroup :: SrcSpan -> NodesBuilder -> NodesBuilder
+layoutBracedGroup sp nb =
+  Builder
+    { builderMinCol = spanMinCol sp <> internalIndent,
+      builderVal =
+        singleNode $
+          LayoutBracedGroup sp $
+            toList $
+              mstripIndent internalIndent $
+                stripEndBlank $
+                  unNodesCombine $
+                    builderVal nb
+    }
+  where
+    internalIndent = builderMinCol nb
+
 inlineComment :: Located Text -> NodesBuilder
 inlineComment (Located sp t) =
   Builder
@@ -299,7 +317,10 @@ levelElement nm nb =
     elt =
       Element (locatedSpan nm) (locatedVal nm) $
         LevelScopeContent $
-          mstripIndent internalIndent $ stripAllEndSpace $ unNodesCombine $ builderVal nb
+          mstripIndent internalIndent $
+            stripAllEndSpace $
+              unNodesCombine $
+                builderVal nb
 
 layoutElement :: Located EltName -> NodesBuilder -> ElementBuilder
 layoutElement nm nb =
@@ -313,7 +334,10 @@ layoutElement nm nb =
     elt =
       Element (locatedSpan nm) (locatedVal nm) $
         LayoutScopeContent $
-          mstripIndent internalIndent $ stripEndBlank $ unNodesCombine $ builderVal nb
+          mstripIndent internalIndent $
+            stripEndBlank $
+              unNodesCombine $
+                builderVal nb
 
 element :: ElementBuilder -> NodesBuilder
 element (Builder n v) = Builder n $ singleNode $ ElementNode v
@@ -391,8 +415,8 @@ addToAttrBuilder ::
 addToAttrBuilder (AttrBuilderEntry locKey assignSp val) msepSp ab =
   case M.alterF go (locatedVal locKey) $ builderVal ab of
     Just m ->
-      Just
-        $! Builder
+      Just $!
+        Builder
           { builderMinCol = mincol,
             builderVal = m
           }
@@ -484,11 +508,12 @@ stripAllEndSpace x = x
 -- blank line, an optional leading blank line, and all indentation in excess of
 -- the 'builderMinCol'.
 resolveBracedNodes :: NodesBuilder -> [Node]
-resolveBracedNodes nb = toList $ mstripIndent (builderMinCol nb) $
-  case stripEndBlank $ unNodesCombine $ builderVal nb of
-    LineSpace _ :<| LineEnd :<| xs -> xs
-    LineEnd :<| xs -> xs
-    x -> x
+resolveBracedNodes nb = toList $
+  mstripIndent (builderMinCol nb) $
+    case stripEndBlank $ unNodesCombine $ builderVal nb of
+      LineSpace _ :<| LineEnd :<| xs -> xs
+      LineEnd :<| xs -> xs
+      x -> x
 
 {- TODO: will want to rescue this for the intermediate -> full syntax conversion
 

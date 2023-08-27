@@ -29,6 +29,8 @@ data Token
     LevelTag !Int !EltName
   | -- | @&tagname@
     LayoutTag !EltName
+  | -- | @&{}@
+    StartLayoutBracedGroup
   | -- | @\\`@
     StartInlineVerbatim
   | -- | any text other than a newline, space, or backtick
@@ -85,6 +87,7 @@ renderToken (LineComment t) = "\\%" <> t
 renderToken (InlineTag t) = "\\" <> t
 renderToken (LevelTag n t) = T.replicate n "#" <> t
 renderToken (LayoutTag t) = "&" <> t
+renderToken StartLayoutBracedGroup = "&{}"
 renderToken StartInlineVerbatim = "\\`"
 renderToken (InlineVerbatimText t) = t
 renderToken VerbatimBacktick = "``"

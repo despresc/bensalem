@@ -21,9 +21,6 @@ module Bensalem.Markup.BensalemML.Syntax
   )
 where
 
-import Data.Foldable (toList)
-import Data.Map.Strict (Map)
-import Data.Text (Text)
 import qualified Bensalem.Markup.BensalemML.Parser as SP
 import Bensalem.Markup.BensalemML.ParserDefs
   ( Located (..),
@@ -34,6 +31,9 @@ import Bensalem.Markup.BensalemML.ParserDefs
   )
 import qualified Bensalem.Markup.BensalemML.Syntax.Intermediate as SI
 import Bensalem.Markup.BensalemML.Token (EltName)
+import Data.Foldable (toList)
+import Data.Map.Strict (Map)
+import Data.Text (Text)
 
 -- | Parse a sequence of bensalem nodes from the given input. These nodes are
 -- assumed to be in the outermost scope of a document (in particular, not in an
@@ -92,6 +92,7 @@ data ElementArg = ElementArg
 
 data ElementArgTy
   = ElementArgBraced SrcSpan
+  | ElementArgLayout SrcSpan
   | ElementArgBody
   deriving (Eq, Ord, Show)
 
@@ -146,6 +147,7 @@ fromIntermediateNodes = go id
               elt <- handleLevelElement con (toList content)
               go (acc . (elt :)) xs
     go _ (SI.BracedGroup _ _ : _) = Left $ ParserError Nothing
+    go _ (SI.LayoutBracedGroup _ _ : _) = Left $ ParserError Nothing
     go _ (SI.AttrMapNode _ _ : _) = Left $ ParserError Nothing
     go acc [] = pure $ acc []
 
@@ -169,12 +171,18 @@ fromIntermediateNodes = go id
       (_, SI.BracedGroup sp n : xs') -> do
         n' <- fromIntermediateNodes n
         resolveArgs (con Nothing . (ElementArg (ElementArgBraced sp) n' :)) xs'
+      (_, SI.LayoutBracedGroup sp n : xs') -> do
+        n' <- fromIntermediateNodes n
+        resolveArgs (con Nothing . (ElementArg (ElementArgLayout sp) n' :)) xs'
       _ -> pure (con Nothing, xs)
 
     resolveArgs con xs = case gatherWhiteSpace id xs of
       (_, SI.BracedGroup sp n : xs') -> do
         n' <- fromIntermediateNodes n
         resolveArgs (con . (ElementArg (ElementArgBraced sp) n' :)) xs'
+      (_, SI.LayoutBracedGroup sp n : xs') -> do
+        n' <- fromIntermediateNodes n
+        resolveArgs (con . (ElementArg (ElementArgLayout sp) n' :)) xs'
       _ -> pure (con, xs)
 
     handleInlineElement con stream = do
