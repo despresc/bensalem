@@ -16,17 +16,13 @@ module Bensalem.Markup.BensalemML.LexerActions
     plainTok,
     doInlineTag,
     doLayoutTag,
-    doStartLayoutBracedGroup,
     doLevelTag,
     doStartBraceGroup,
     doEndBraceGroup,
     doStartAttrSet,
-    doEndAttrSet,
     doBlanks,
     doVerbatimBlanks,
     doLineComment,
-    doStartInlineVerbatim,
-    doEndInlineVerbatim,
     doEOF,
   )
 where
@@ -50,7 +46,6 @@ setCode n = modify $ \ps -> ps {parseStateStartCode = n}
 
 thenCode :: AlexAction -> Int -> AlexAction
 thenCode f cd n sp t = f n sp t <* setCode cd
-{-# INLINE thenCode #-}
 
 plainTok :: Token -> AlexAction
 plainTok tok _ sp _ = pure $ Located sp tok
@@ -76,9 +71,6 @@ setPendingIndent t = modify $ \s -> s {parseStatePendingIndent = Just t}
 
 clearPendingIndent :: Parser ()
 clearPendingIndent = modify $ \s -> s {parseStatePendingIndent = Nothing}
-
-setStartVerbatim :: SrcSpan -> Parser ()
-setStartVerbatim sp = modify $ \s -> s {parseStateStartVerbatimLoc = Just sp}
 
 -- | Construct a zero-width 'Tok.EndImplicitScope' at the start of the given 'SrcSpan'
 conVirtual :: SrcSpan -> Located Token
@@ -112,7 +104,10 @@ resolveLevelScopes spn n tok = do
 
 -- | Handle a line comment
 doLineComment :: AlexAction
-doLineComment _ sp t = pure $ Located sp $ Tok.LineComment $ T.drop 2 t
+doLineComment _ sp t = pure $ Located sp $ Tok.LineComment t'
+  where
+    -- Drop the initial @;;
+    t' = T.drop 3 t
 
 -- | Handle a level element tag. Level elements close the scope of all level
 -- elements with depth greater than or equal to that level element.
@@ -123,6 +118,7 @@ doLevelTag _ sp t =
     Nothing -> throwLexError errSp $ InvalidEltName tagt
   where
     (nums, tagt) = T.span (== '#') t
+    -- the lexer guarantees (must guarantee) that this is greater than zero
     level = T.length nums
     errSp = sp {srcSpanStart = spStart {srcCol = srcCol spStart + level}}
       where
@@ -175,39 +171,6 @@ doEndBraceGroup _ sp _ = do
       AttrSetScope -> throwLexError sp $ AttrBraceMismatch $ scopePos scope
     resolveScopes' _ [] = throwLexError sp UnmatchedEndBraceGroup
 
--- | Handle the end of an attribute set. The end of an attribute set resolves
--- all layout and level scopes, then resolves a single attribute set scope. A
--- lexical error is thrown if an attribute set scope is encountered before a
--- braced scope is seen, or if no attribute set scope is found.
-doEndAttrSet :: AlexAction
-doEndAttrSet _ sp _ = do
-  scopes <- gets parseStateScopeStack
-  resolveScopes scopes
-  where
-    tokEnd = conVirtual sp
-    tokBracket = Located sp Tok.EndAttrSet
-    resolveScopes (scope : scopes) = case scopeType scope of
-      AttrSetScope -> do
-        setScopeStack scopes
-        pure tokBracket
-      LayoutScope _ ambient -> do
-        setLayoutDepth ambient
-        resolveScopes' [tokBracket] scopes
-      LevelScope _ -> resolveScopes' [tokBracket] scopes
-      BraceScope -> throwLexError sp $ BraceAttrMismatch $ scopePos scope
-    resolveScopes [] = throwLexError sp UnmatchedEndAttrSet
-    resolveScopes' acc (scope : scopes) = case scopeType scope of
-      AttrSetScope -> do
-        setScopeStack scopes
-        setPendingTokens acc
-        pure tokEnd
-      LayoutScope _ ambient -> do
-        setLayoutDepth ambient
-        resolveScopes' (tokEnd : acc) scopes
-      LevelScope _ -> resolveScopes' (tokEnd : acc) scopes
-      BraceScope -> throwLexError sp $ BraceAttrMismatch $ scopePos scope
-    resolveScopes' _ [] = throwLexError sp UnmatchedEndAttrSet
-
 -- | Handle the start of a layout block, pushing a new 'LayoutScope' onto the
 -- stack and setting the new layout depth
 doLayoutTag :: AlexAction
@@ -224,20 +187,6 @@ doLayoutTag _ sp t = case Tok.validEltName tagt of
     errSp = sp {srcSpanStart = spStart {srcCol = srcCol spStart + 1}}
       where
         spStart = srcSpanStart sp
-
--- | Handle the start of a layout block, pushing a new 'LayoutScope' onto the
--- stack and setting the new layout depth
-
--- TODO: obvious duplication with doLayoutTag
-doStartLayoutBracedGroup :: AlexAction
-doStartLayoutBracedGroup _ sp _ =
-  do
-    ambient <- gets parseStateLayoutDepth
-    pushScope $ Scope (LayoutScope layoutDepth ambient) sp
-    setLayoutDepth layoutDepth
-    pure $ Located sp Tok.StartLayoutBracedGroup
-  where
-    layoutDepth = srcCol $ srcSpanStart sp
 
 doInlineTag :: AlexAction
 doInlineTag _ sp t = case Tok.validEltName tagt of
@@ -376,16 +325,6 @@ replicateEndImplicitScope' sp (Just pending) tok n
     go m acc
       | m == n = (tokEnd, acc [pending, locTok])
       | otherwise = go (m + 1) (acc . (tokEnd :))
-
-doStartInlineVerbatim :: AlexAction
-doStartInlineVerbatim _ sp _ = do
-  setStartVerbatim sp
-  pure $ Located sp Tok.StartInlineVerbatim
-
-doEndInlineVerbatim :: AlexAction
-doEndInlineVerbatim _ sp _ = do
-  modify $ \s -> s {parseStatePendingIndent = Nothing}
-  pure $ Located sp Tok.EndInlineVerbatim
 
 -- | Resolve all pending scopes, throwing a lexer error if there are any pending
 -- braced group or attribute set scopes

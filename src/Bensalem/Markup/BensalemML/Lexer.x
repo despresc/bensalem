@@ -13,15 +13,12 @@ import Bensalem.Markup.BensalemML.Token
 import qualified Data.Text as T
 }
 
-$startLineSpecialChar = [\\ \[ \]  \{ \} = \  \n \, \# &]
-$midLineSpecialChar = $startLineSpecialChar # [\#]
+$specialChar = [ \[ \] \{ \} = \ \n @ ]
+$plainText = $printable # $specialChar
 $whitespace = [\  \n]
-$startLinePlainText = $printable # $startLineSpecialChar
-$midLinePlainText = $printable # $midLineSpecialChar
-$identish = $printable # [ \[ \] \{ \} \  \n \\]
-$verbatimPlain = [^ \  \n `]
-$backslash = [\\]
-$inlineStarter = $identish # [` \% \# &]
+
+$identish = $printable # [ \[ \] \{ \} \  \n ]
+$inlineStarter = $identish # [@ \; \# &]
 
 @blanks = (\n | \ )*
 @indent = \n @blanks
@@ -34,76 +31,42 @@ tokens :-
   (\n | \ )+ { textTok Blanks `thenCode` plainTextBeginLine}
 }
 
--- the only differences between begin line and mid line is that begin line
--- doesn't need to recognize white space tokens, and mid line should not
--- recognize level tags
-
 <plainTextBeginLine> {
-  $startLinePlainText+ { textTok PlainText `thenCode` plainTextMidLine }
+  $plainText+ { textTok PlainText `thenCode` plainTextMidLine }
 
   "{" { doStartBraceGroup `thenCode` plainTextMidLine }
   "}" { doEndBraceGroup `thenCode` plainTextMidLine }
-  "[" { doStartAttrSet `thenCode` plainTextMidLine }
-  "]" { doEndAttrSet `thenCode` plainTextMidLine }
+  "[" { plainTok StartAttrSet `thenCode` plainTextMidLine }
+  "]" { plainTok EndAttrSet `thenCode` plainTextMidLine }
   "=" { plainTok Equals `thenCode` plainTextMidLine }
-  "," { plainTok Comma `thenCode` plainTextMidLine }
 
-  "\\" { plainTok (Escape EscBackslash) `thenCode` plainTextMidLine }
-  "\{" { plainTok (Escape EscLbrace) `thenCode` plainTextMidLine }
-  "\}" { plainTok (Escape EscRbrace) `thenCode` plainTextMidLine }
-  "\[" { plainTok (Escape EscLbracket) `thenCode` plainTextMidLine }
-  "\]" { plainTok (Escape EscRbracket) `thenCode` plainTextMidLine }
-  "\&" { plainTok (Escape EscAnd) `thenCode` plainTextMidLine }
-  "\#" { plainTok (Escape EscNum) `thenCode` plainTextMidLine }
-
-  "\`" { doStartInlineVerbatim `thenCode` verbatimPlain }
-  "\%" .* { doLineComment `thenCode` plainTextMidLine }
-
-  "&" $identish+ { doLayoutTag `thenCode` plainTextMidLine }
-  "&{}" { doStartLayoutBracedGroup `thenCode` plainTextMidLine }
-  "\" $inlineStarter $identish* { doInlineTag `thenCode` plainTextMidLine }
-  "#"+ $identish+ { doLevelTag `thenCode` plainTextMidLine }
+  "@@" { plainTok LiteralAt `thenCode` plainTextMidLine }
+  "@;;" .* { doLineComment `thenCode` plainTextMidLine }
+  "@&" $identish+ { doLayoutTag `thenCode` plainTextMidLine }
+  "@" $inlineStarter $identish* { doInlineTag `thenCode` plainTextMidLine }
+  "@#" "#"* $identish+ { doLevelTag `thenCode` plainTextMidLine }
 }
 
 <plainTextMidLine> {
-  $midLinePlainText+ { textTok PlainText }
+  $plainText+ { textTok PlainText }
 
   \ + { \toklen spn _ -> pure $ Located spn $ LineSpace toklen }
-  @indent { doBlanks `thenCode` plainTextBeginLine}
+  @indent { doBlanks `thenCode` plainTextBeginLine }
 
   "{" { doStartBraceGroup }
   "}" { doEndBraceGroup }
-  "[" { doStartAttrSet }
-  "]" { doEndAttrSet }
+  "[" { plainTok StartAttrSet }
+  "]" { plainTok StartAttrSet }
   "=" { plainTok Equals }
-  "," { plainTok Comma }
 
-  "\\" { plainTok $ Escape EscBackslash }
-  "\{" { plainTok $ Escape EscLbrace }
-  "\}" { plainTok $ Escape EscRbrace }
-  "\[" { plainTok $ Escape EscLbracket }
-  "\]" { plainTok $ Escape EscRbracket }
-  "\&" { plainTok $ Escape EscAnd }
-  "\#" { plainTok $ Escape EscNum }
-
-  "\`" { doStartInlineVerbatim `thenCode` verbatimPlain }
-  "\%" .* { doLineComment }
-
-  "&" $identish+ { doLayoutTag }
-  "&{}" { doStartLayoutBracedGroup }
-  "\" $inlineStarter $identish* { doInlineTag }
-}
-
-<verbatimPlain> {
-  $verbatimPlain+ { textTok InlineVerbatimText }
-  \ + { \toklen spn _ -> pure $ Located spn $ LineSpace toklen }
-  @indent { doVerbatimBlanks }
-  "``" { plainTok $ VerbatimBacktick }
-  "`/" { doEndInlineVerbatim `thenCode` plainTextMidLine }
+  "@@" { plainTok LiteralAt `thenCode` plainTextMidLine }
+  "@;;" .* { doLineComment }
+  "@&" $identish+ { doLayoutTag `thenCode` plainTextMidLine }
+  "@#" "#"* $identish+ { doLevelTag `thenCode` plainTextMidLine }
+  "@" $inlineStarter $identish* { doInlineTag `thenCode` plainTextMidLine }
 }
 
 {
-
 -- | Parse a single token from the input stream
 lexToken :: Parser (Located Token)
 lexToken = do

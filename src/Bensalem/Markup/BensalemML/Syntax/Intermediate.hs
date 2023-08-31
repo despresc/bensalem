@@ -27,9 +27,8 @@ module Bensalem.Markup.BensalemML.Syntax.Intermediate
     NodesBuilder,
     NodesCombine (..),
     text,
-    insigComma,
-    insigEquals,
-    escapeSequence,
+    insigLit,
+    literalAt,
     lineSpace,
     blanks,
     inlineComment,
@@ -371,35 +370,21 @@ inlineVerbatim sp1 nb sp2 =
       LineEnd :<| xs -> xs
       x -> x
 
-insigComma :: SrcSpan -> NodesBuilder
-insigComma sp =
+-- TODO: can probably just pass in the token and re-render it for the PlainText
+insigLit :: Text -> SrcSpan -> NodesBuilder
+insigLit t sp =
   Builder
     { builderMinCol = spanMinCol sp,
-      builderVal = singleNode $ PlainText ","
+      builderVal = singleNode $ PlainText t
     }
 
-insigEquals :: SrcSpan -> NodesBuilder
-insigEquals sp =
+-- TODO: obviously just insigLit
+literalAt :: SrcSpan -> NodesBuilder
+literalAt sp =
   Builder
     { builderMinCol = spanMinCol sp,
-      builderVal = singleNode $ PlainText "="
+      builderVal = singleNode $ PlainText "@"
     }
-
-escapeSequence :: Located Tok.EscSequence -> NodesBuilder
-escapeSequence esc =
-  Builder
-    { builderMinCol = spanMinCol $ locatedSpan esc,
-      builderVal = singleNode $ PlainText escText
-    }
-  where
-    escText = case locatedVal esc of
-      Tok.EscBackslash -> "\\"
-      Tok.EscLbrace -> "{"
-      Tok.EscRbrace -> "}"
-      Tok.EscLbracket -> "["
-      Tok.EscRbracket -> "]"
-      Tok.EscAnd -> "&"
-      Tok.EscNum -> "#"
 
 data AttrBuilderEntry
   = AttrBuilderEntry !(Located EltName) !SrcSpan !AttrValBuilder
@@ -430,6 +415,8 @@ addToAttrBuilder (AttrBuilderEntry locKey assignSp val) msepSp ab =
     go Nothing = Just $! Just $! locKey {locatedVal = builderVal val}
     go (Just _) = Nothing
 
+-- TODO: I think the Maybe SrcSpan here can be eliminated entirely, as that was
+-- formerly the srcspan of the comma separator, I'm pretty sure
 addToAttrBuilderM :: AttrBuilderEntry -> Maybe SrcSpan -> AttrBuilder -> Parser AttrBuilder
 addToAttrBuilderM x y z = case addToAttrBuilder x y z of
   Just m -> pure m
