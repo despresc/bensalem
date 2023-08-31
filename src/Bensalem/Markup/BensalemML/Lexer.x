@@ -44,7 +44,7 @@ tokens :-
   "@;;" .* { doLineComment `thenCode` plainTextMidLine }
   "@&" $identish+ { doLayoutTag `thenCode` plainTextMidLine }
   "@" $inlineStarter $identish* { doInlineTag `thenCode` plainTextMidLine }
-  "@#" "#"* $identish+ { doLevelTag `thenCode` plainTextMidLine }
+  "@" "#"+ $identish+ { doLevelTag `thenCode` plainTextMidLine }
 }
 
 <plainTextMidLine> {
@@ -56,13 +56,13 @@ tokens :-
   "{" { doStartBraceGroup }
   "}" { doEndBraceGroup }
   "[" { plainTok StartAttrSet }
-  "]" { plainTok StartAttrSet }
+  "]" { plainTok EndAttrSet }
   "=" { plainTok Equals }
 
   "@@" { plainTok LiteralAt `thenCode` plainTextMidLine }
   "@;;" .* { doLineComment }
   "@&" $identish+ { doLayoutTag `thenCode` plainTextMidLine }
-  "@#" "#"* $identish+ { doLevelTag `thenCode` plainTextMidLine }
+  "@" "#"+ $identish+ { doLevelTag `thenCode` plainTextMidLine }
   "@" $inlineStarter $identish* { doInlineTag `thenCode` plainTextMidLine }
 }
 

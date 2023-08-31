@@ -1,26 +1,28 @@
 { testcases }
 
-[ various       =,escapes { \#\&\\\]\[\{\} } ]
+@;; a comment
 
-#leveltag and insignificant #
+@inlineelt
 
-##anotherleveltag
-
-&layouttag
+@&layouttag
   [content]
 
-    &subtag
+    @&subtag
       {content}
-      #leveltagmore
+      @#leveltagmore
 
-      ##leveltag4
+      @##leveltag4
 
 
-      #leveltag5
-   &othersub
+      @#leveltag5
+   @&othersub
 
-###thirdtag
+@#leveltag plus
 
-#extratag
+@##anotherleveltag
 
-\inlineelt
+
+@###thirdtag
+
+@#extratag
+

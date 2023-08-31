@@ -7,9 +7,6 @@
 -- Maintainer  : Christian Despres
 module Bensalem.Markup.BensalemML.TokenSpec where
 
-import qualified Data.ByteString.Lazy as LBS
-import Data.Text (Text)
-import qualified Data.Text.Lazy.Encoding as TLE
 import Bensalem.Markup.BensalemML.Lexer (lexTokens)
 import Bensalem.Markup.BensalemML.ParserDefs
   ( Located (..),
@@ -19,6 +16,9 @@ import Bensalem.Markup.BensalemML.ParserDefs
     evalParser,
     initAlexInput,
   )
+import qualified Data.ByteString.Lazy as LBS
+import Data.Text (Text)
+import qualified Data.Text.Lazy.Encoding as TLE
 import Test.Common
 import Test.Tasty
 
@@ -41,8 +41,7 @@ goldenTests :: TestTree
 goldenTests =
   testGroup
     "Golden tests"
-    [tokenGolden]
+    [gold "tokenized properly" $ selectRight show lexTokens']
   where
     base = "./test/golden/Bensalem/Markup/BensalemML/TokenSpec/"
     gold = goldWith base "scb" "token"
-    tokenGolden = gold "tokenized properly" $ selectRight show lexTokens'

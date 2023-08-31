@@ -117,7 +117,9 @@ doLevelTag _ sp t =
     Just eltname -> resolveLevelScopes sp level $ Tok.LevelTag level eltname
     Nothing -> throwLexError errSp $ InvalidEltName tagt
   where
-    (nums, tagt) = T.span (== '#') t
+    -- drop the initial @
+    t' = T.drop 1 t
+    (nums, tagt) = T.span (== '#') t'
     -- the lexer guarantees (must guarantee) that this is greater than zero
     level = T.length nums
     errSp = sp {srcSpanStart = spStart {srcCol = srcCol spStart + level}}
@@ -183,7 +185,8 @@ doLayoutTag _ sp t = case Tok.validEltName tagt of
   Nothing -> throwLexError errSp $ InvalidEltName tagt
   where
     layoutDepth = srcCol $ srcSpanStart sp
-    tagt = T.drop 1 t
+    -- drop the initial @&
+    tagt = T.drop 2 t
     errSp = sp {srcSpanStart = spStart {srcCol = srcCol spStart + 1}}
       where
         spStart = srcSpanStart sp

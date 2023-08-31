@@ -1,21 +1,21 @@
-&p indent
+@&p indent
       in a paragraph
   like so
     and more
 
-&p
+@&p
   indent
     in
    a
      paragraph
 
-&p [ ]   indent
+@&p [ ]   indent
     more
 
-&p [ ]   indent
+@&p [ ]   indent
              more
 
-&p [
+@&p [
   ] indent
        and
       more
