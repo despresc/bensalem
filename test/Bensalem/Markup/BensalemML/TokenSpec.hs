@@ -41,7 +41,7 @@ goldenTests :: TestTree
 goldenTests =
   testGroup
     "Golden tests"
-    [gold "tokenized properly" $ selectRight show lexTokens']
+    [gold "simple-tokens" "tokenizes simple tokens properly" $ selectRight show lexTokens']
   where
     base = "./test/golden/Bensalem/Markup/BensalemML/TokenSpec/"
-    gold = goldWith base "scb" "token"
+    gold = goldWith base "input"

@@ -15,16 +15,11 @@ spec :: TestTree
 spec =
   testGroup
     "Syntax"
-    [ indent1,
-      indent2
-    ]
+    [simpleInlines]
   where
     base = "test/golden/Bensalem/Markup/BensalemML/SyntaxSpec/"
-    gold = goldWith base "scb"
+    gold = goldWith base "bsm"
     parse' = fmap pShowByte . parseNodes ""
-    indent1 =
-      gold "indent1" "indent parsed correctly in layout elements" $
-        selectRight show parse'
-    indent2 =
-      gold "indent2" "indent parsed correctly in level elements" $
+    simpleInlines =
+      gold "simple-inlines" "parses a variety of simple inlines" $
         selectRight show parse'

@@ -1,0 +1,23 @@
+(0,1,1)(2,1,3) LiteralAt
+(2,1,3)(3,2,1) Blanks "\n"
+(3,2,1)(4,2,2) StartAttrSet
+(4,2,2)(5,2,3) EndAttrSet
+(5,2,3)(6,3,1) Blanks "\n"
+(6,3,1)(7,3,2) Equals
+(7,3,2)(8,4,1) Blanks "\n"
+(8,4,1)(9,4,2) StartBraceGroup
+(9,4,2)(10,4,3) EndBraceGroup
+(10,4,3)(11,5,1) Blanks "\n"
+(11,5,1)(21,5,11) LineComment "comment"
+(21,5,11)(22,6,1) Blanks "\n"
+(22,6,1)(29,6,8) InlineTag "inline"
+(29,6,8)(30,7,1) Blanks "\n"
+(30,7,1)(38,7,9) LayoutTag "layout"
+(38,7,9)(38,7,9) EndImplicitScope
+(38,7,9)(39,8,1) Blanks "\n"
+(39,8,1)(47,8,9) LevelTag 1 "level1"
+(47,8,9)(48,9,1) Blanks "\n"
+(48,9,1)(57,9,10) LevelTag 2 "level2"
+(57,9,10)(58,10,1) Blanks "\n"
+(58,10,1)(58,10,1) EndImplicitScope
+(58,10,1)(58,10,1) EndImplicitScope
