@@ -125,7 +125,6 @@ data Scope = Scope
 
 data ScopeType
   = BraceScope
-  | AttrSetScope
   | -- | the depth it defines, the ambient depth
     LayoutScope !Int !Int
   | LevelScope !Int
@@ -156,27 +155,14 @@ data LexError
   | -- | a start of brace group was not matched by an end of brace group (span
     -- of start of brace group)
     UnmatchedStartBraceGroup SrcSpan
-  | -- | a start of attribute set was not matched by an end of attribute set (span
-    -- of start of attribute set)
-    UnmatchedStartAttrSet SrcSpan
   | -- | an end of brace group was encountered with no matching start of brace
     -- | group
     UnmatchedEndBraceGroup
-  | -- | an end of attribute set was encountered with no matching start of attribute set
-    UnmatchedEndAttrSet
   | -- | a start of attribute set was ended by an end of braced group (span of
     -- start of attribute set)
     AttrBraceMismatch SrcSpan
-  | -- | a start of braced group was ended by an end of attribute set (span of
-    -- start of braced group )
-    BraceAttrMismatch SrcSpan
   | -- | a de-indent occurred in a braced group (span of start of braced group)
     DeIndentInBracedGroup SrcSpan
-  | -- | a de-indent occurred in an attribute set (span of start of attribute
-    -- set)
-    DeIndentInAttrSet SrcSpan
-  | -- | a de-indent occurred in a verbatim span (span of start of verbatim span)
-    DeIndentInVerbatimSpan SrcSpan
   deriving (Eq, Ord, Show)
 
 -- | A position in a 'Char' stream. The 'srcOffset' is the index of the position
@@ -203,6 +189,11 @@ data Located a = Located
   { locatedSpan :: !SrcSpan,
     locatedVal :: a
   }
+  deriving (Eq, Ord, Show)
+
+data MinCol
+  = MinCol !Int
+  | NoMinCol
   deriving (Eq, Ord, Show)
 
 -- | The input for alex, keeping track of 'Text' input as if it were a stream of

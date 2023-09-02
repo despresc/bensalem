@@ -19,9 +19,7 @@ module Bensalem.Markup.BensalemML.LexerActions
     doLevelTag,
     doStartBraceGroup,
     doEndBraceGroup,
-    doStartAttrSet,
     doBlanks,
-    doVerbatimBlanks,
     doLineComment,
     doEOF,
   )
@@ -133,13 +131,6 @@ doStartBraceGroup _ sp _ = do
   pushScope $ Scope BraceScope sp
   pure $ Located sp Tok.StartBraceGroup
 
--- | Handle the start of an attribute set. The start of an attribute set opens
--- an attribute set scope.
-doStartAttrSet :: AlexAction
-doStartAttrSet _ sp _ = do
-  pushScope $ Scope AttrSetScope sp
-  pure $ Located sp Tok.StartAttrSet
-
 -- | Handle the end of a braced group. The end of a braced group resolves all
 -- layout and level scopes, then resolves a single braced scope. A lexical error
 -- is thrown if an attribute set scope is encountered before a braced scope is
@@ -159,7 +150,6 @@ doEndBraceGroup _ sp _ = do
         setLayoutDepth ambient
         resolveScopes' [tokBrace] scopes
       LevelScope _ -> resolveScopes' [tokBrace] scopes
-      AttrSetScope -> throwLexError sp $ AttrBraceMismatch $ scopePos scope
     resolveScopes [] = throwLexError sp UnmatchedEndBraceGroup
     resolveScopes' acc (scope : scopes) = case scopeType scope of
       BraceScope -> do
@@ -170,7 +160,6 @@ doEndBraceGroup _ sp _ = do
         setLayoutDepth ambient
         resolveScopes' (tokEnd : acc) scopes
       LevelScope _ -> resolveScopes' (tokEnd : acc) scopes
-      AttrSetScope -> throwLexError sp $ AttrBraceMismatch $ scopePos scope
     resolveScopes' _ [] = throwLexError sp UnmatchedEndBraceGroup
 
 -- | Handle the start of a layout block, pushing a new 'LayoutScope' onto the
@@ -270,29 +259,12 @@ doBlanks _ sp t = do
           LevelScope _ ->
             go upcomingLevelDepth tokLevel (numVirtuals + 1) scopes
           BraceScope -> throwLexError sp $ DeIndentInBracedGroup $ scopePos scope
-          AttrSetScope -> throwLexError sp $ DeIndentInAttrSet $ scopePos scope
         else do
           setScopeStack ss
           cleanUp upcomingLevelDepth numVirtuals
     go upcomingLevelDepth _ !numVirtuals [] = do
       setScopeStack []
       cleanUp upcomingLevelDepth numVirtuals
-
--- | Handle an 'Indent' token while inside a verbatim span. The handling
--- required here is simpler than in 'doIndent', since de-indents are forbidden
--- within verbatim spans and nothing in a verbatim span can create nested
--- scopes.
-doVerbatimBlanks :: AlexAction
-doVerbatimBlanks _ sp t = do
-  let tokLevel = srcCol $ srcSpanEnd sp
-  depth <- gets parseStateLayoutDepth
-  if depth < tokLevel
-    then pure $ Located sp $ Tok.Blanks t
-    else do
-      mstart <- gets parseStateStartVerbatimLoc
-      case mstart of
-        Just spStart -> throwLexError sp $ DeIndentInVerbatimSpan spStart
-        Nothing -> error "internal error - doVerbatimIndent"
 
 -- | Given a 'Token' and the 'SrcSpan' that it spans, create the indicated
 -- number of virtual tokens at the start of the 'SrcSpan', returning the first
@@ -348,5 +320,4 @@ doEOF = do
       LayoutScope _ _ -> getNumVirtuals' endPos (nv + 1) scopes
       LevelScope _ -> getNumVirtuals' endPos (nv + 1) scopes
       BraceScope -> throwLexError endPos $ UnmatchedStartBraceGroup (scopePos scope)
-      AttrSetScope -> throwLexError endPos $ UnmatchedStartAttrSet (scopePos scope)
     getNumVirtuals' _ !nv [] = pure nv
