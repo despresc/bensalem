@@ -1,0 +1,39 @@
+[ ElementNode
+ ( Element
+  { elementTagPos = SrcSpan
+   { srcSpanName = ""
+   , srcSpanStart = SrcPos
+    { srcOffset = 0
+    , srcLine = 1
+    , srcCol = 1
+    }
+   , srcSpanEnd = SrcPos
+    { srcOffset = 8
+    , srcLine = 1
+    , srcCol = 9
+    }
+   }
+  , elementArgPresentation = PresentLayout
+  , elementName = "layout"
+  , elementAttrs = []
+  , elementArg =
+   [ LineEnd
+   , LineSpace 2
+   , PlainText "with"
+   , LineSpace 1
+   , PlainText "some"
+   , LineSpace 1
+   , PlainText "content"
+   , LineEnd
+   , LineSpace 5
+   , PlainText "and"
+   , LineSpace 1
+   , PlainText "more"
+   , LineEnd
+   , LineSpace 3
+   , PlainText "here"
+   ]
+  }
+ )
+, LineEnd
+]
