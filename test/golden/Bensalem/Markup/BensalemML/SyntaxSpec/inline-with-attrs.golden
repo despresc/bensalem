@@ -1,0 +1,78 @@
+[ ElementNode
+ ( Element
+  { elementTagPos = SrcSpan
+   { srcSpanName = ""
+   , srcSpanStart = SrcPos
+    { srcOffset = 0
+    , srcLine = 1
+    , srcCol = 1
+    }
+   , srcSpanEnd = SrcPos
+    { srcOffset = 10
+    , srcLine = 1
+    , srcCol = 11
+    }
+   }
+  , elementArgPresentation = PresentInline
+  , elementName = "inlineelt"
+  , elementAttrs =
+   [ Attr
+    ( SrcSpan
+     { srcSpanName = ""
+     , srcSpanStart = SrcPos
+      { srcOffset = 11
+      , srcLine = 1
+      , srcCol = 12
+      }
+     , srcSpanEnd = SrcPos
+      { srcOffset = 13
+      , srcLine = 1
+      , srcCol = 14
+      }
+     }
+    ) "a1"
+    ( AttrValMarkup
+     [ PlainText "thing" ]
+    )
+   , Attr
+    ( SrcSpan
+     { srcSpanName = ""
+     , srcSpanStart = SrcPos
+      { srcOffset = 22
+      , srcLine = 1
+      , srcCol = 23
+      }
+     , srcSpanEnd = SrcPos
+      { srcOffset = 24
+      , srcLine = 1
+      , srcCol = 25
+      }
+     }
+    ) "a2"
+    ( AttrValSet
+     [ Attr
+      ( SrcSpan
+       { srcSpanName = ""
+       , srcSpanStart = SrcPos
+        { srcOffset = 26
+        , srcLine = 1
+        , srcCol = 27
+        }
+       , srcSpanEnd = SrcPos
+        { srcOffset = 28
+        , srcLine = 1
+        , srcCol = 29
+        }
+       }
+      ) "a3"
+      ( AttrValMarkup
+       [ PlainText "x" ]
+      )
+     ]
+    )
+   ]
+  , elementArg = []
+  }
+ )
+, LineEnd
+]

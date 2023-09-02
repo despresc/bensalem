@@ -12,7 +12,6 @@ module Bensalem.Markup.BensalemML.Syntax
   ( -- * Syntax types
     Node (..),
     Element (..),
-    AttrMap (..),
     AttrKey,
     AttrVal (..),
 
@@ -32,7 +31,7 @@ import Bensalem.Markup.BensalemML.ParserDefs
 import qualified Bensalem.Markup.BensalemML.Syntax.Intermediate as SI
 import Bensalem.Markup.BensalemML.Token (EltName)
 import Data.Foldable (toList)
-import Data.Map.Strict (Map)
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 
 -- | Parse a sequence of bensalem nodes from the given input. These nodes are
@@ -78,9 +77,10 @@ data Node
 -- element is always empty.
 data Element = Element
   { elementTagPos :: !SrcSpan,
+    elementArgPresentation :: !SI.Presentation,
     elementName :: !EltName,
-    elementAttrs :: Maybe (Located AttrMap),
-    elementArgs :: [ElementArg]
+    elementAttrs :: [Attr],
+    elementArg :: [Node]
   }
   deriving (Eq, Ord, Show)
 
@@ -96,28 +96,52 @@ data ElementArgTy
   | ElementArgBody
   deriving (Eq, Ord, Show)
 
+-- TODO: opaqueness and checking of the AttrKey
+data Attr = Attr !SrcSpan !AttrKey !AttrVal
+  deriving (Eq, Ord, Show)
+
+type AttrKey = Text
+
 -- | An attribute value
 data AttrVal
   = AttrValMarkup [Node]
-  | AttrValMap AttrMap
+  | AttrValSet [Attr]
   deriving (Eq, Ord, Show)
 
--- | An attribute map that also stores the positions of the /keys/ of the map
+-- TODO: need to add in the checking and the indentation stripping!
+fromIntermediateNodes :: [SI.Node] -> Either ParseError [Node]
+fromIntermediateNodes = go id
+  where
+    go acc (SI.PlainText t : xs) = go (acc . (PlainText t :)) xs
+    go acc (SI.LineSpace n : xs) = go (acc . (LineSpace n :)) xs
+    go acc (SI.LineEnd : xs) = go (acc . (LineEnd :)) xs
+    go acc (SI.InlineComment _ : xs) = go acc xs
+    go acc (SI.ElementNode e : xs) = do
+      let content = SI.elementArg e
+      attrs' <- traverse convertAttrs $ SI.elementAttrs e
+      content' <- traverse (fromIntermediateNodes . toList) content
+      let elt =
+            Element
+              (SI.elementTagPos e)
+              (SI.elementPresentation e)
+              (SI.elementName e)
+              (fromMaybe [] attrs')
+              (toList $ fromMaybe mempty content')
+      go (acc . (ElementNode elt :)) xs
+    go acc [] = pure $ acc []
 
--- n.b. this representation may have to change if we allow attribtues like
--- [x.y.z=something]. we could always just have the SrcSpan of the entire
--- sequence stored in every intermediate, I suppose, but we'd have to be careful
--- when reporting errors and such that we recognize that that may happen and not
--- duplicate information.
-newtype AttrMap = AttrMap
-  { unAttrMap :: Map AttrKey (Located AttrVal)
-  }
-  deriving (Eq, Ord, Show)
+    convertAttrs :: [SI.Attr] -> Either ParseError [Attr]
+    convertAttrs = traverse convertAttr
 
--- | An attribute key is a non-empty string of alphanumeric characters. This
--- currently matches the definition of element names.
-type AttrKey = Text
+    convertAttr (locT, v) = case v of
+      SI.BracedAttrVal nodes -> do
+        nodes' <- fromIntermediateNodes $ toList nodes
+        pure $ Attr (locatedSpan locT) (locatedVal locT) $ AttrValMarkup nodes'
+      SI.SetAttrVal attrs -> do
+        attrs' <- convertAttrs attrs
+        pure $ Attr (locatedSpan locT) (locatedVal locT) $ AttrValSet attrs'
 
+{-
 -- | Convert a sequence of intermediate nodes to full syntax nodes, possibly
 -- failing if there are incorrectly positioned braced groups or attribute sets.
 -- This function assumes that indentation and /trailing/ content white space has
@@ -206,3 +230,4 @@ fromIntermediateNodes = go id
     stripLevelBegin (SI.LineSpace _ : x) = stripLevelBegin x
     stripLevelBegin (SI.LineEnd : x) = stripLevelBegin x
     stripLevelBegin x = x
+-}

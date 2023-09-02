@@ -27,7 +27,15 @@ import Control.Monad.Except (throwError)
 import Data.Text (Text)
 }
 
-%expect 0 -- shift/reduce conflicts
+%expect 4 -- shift/reduce conflicts
+{- A note on the shift/reduce conflicts
+
+The 4 conflicts here are all due to ambiguities related to tags, namely that '{'
+(for inlines) and '[' (for all three) immediately after a tag could be parsed
+either as the start of an argument or attribute set, or as insignificant text.
+The shift (which happy chooses) represents the former and is correct.
+
+-}
 
 %name pManyNodes MixedContent
 %tokentype { Located Tok.Token }
@@ -47,77 +55,94 @@ import Data.Text (Text)
   layoutTag { Located _ (Tok.LayoutTag _) }
   startBrace { Located _ Tok.StartBraceGroup }
   endBrace { Located _ Tok.EndBraceGroup }
-  startAttr { Located _ Tok.StartAttrSet }
-  endAttr { Located _ Tok.EndAttrSet }
+  startAttrSet { Located _ Tok.StartAttrSet }
+  endAttrSet { Located _ Tok.EndAttrSet }
   endImplicitScope { Located _ Tok.EndImplicitScope }
 
 %%
 
 -- a top-level node
-MixedContentNode :: { NodesBuilder }
-  : text { text (getPlainText $1) }
-  | equals { insigLit "=" (locatedSpan $1) }
-  | startAttr { insigLit "[" (locatedSpan $1) }
-  | endAttr { insigLit "]" (locatedSpan $1) }
-  | literalAt { literalAt (locatedSpan $1) }
+MixedContentNode :: { NodeSequence }
+  : text { text (locatedVal $ getPlainText $1) }
+  | equals { text "=" }
+  | startAttrSet { text "[" }
+  | endAttrSet { text "]" }
+  | literalAt { text "@" }
   | lineSpace { lineSpace (getLineSpace $1) }
   | blanks { blanks (getBlanks $1) }
   | InsigBracedGroup { $1 }
   | ElementNode { $1 }
   | inlineComment { inlineComment (getInlineComment $1) }
 
-MixedContent :: { NodesBuilder }
+MixedContent :: { NodeSequence }
   : {- empty -} { mempty }
   | MixedContent1 { $1 }
 
-MixedContent1 :: { NodesBuilder }
+MixedContent1 :: { NodeSequence }
   : MixedContentNode { $1 }
   | MixedContent1 MixedContentNode { $1 <> $2 }
 
-InsigBracedGroup :: { NodesBuilder }
+InsigBracedGroup :: { NodeSequence }
 InsigBracedGroup
   : startBrace MixedContent endBrace { mconcat
-                                         [ insigLit "{" (locatedSpan $1),
-                                           $2,
-                                           insigLit "}" (locatedSpan $3)] }
+                                         [ text "{"
+                                         , $2
+                                         , text "}" ] }
 
-ElementNode :: { NodesBuilder }
-  : InlineElement { element $1 }
-  | LevelElement { element $1 }
-  | LayoutElement { element $1 }
+ElementNode :: { NodeSequence }
+  : InlineElement { elementNode $1 }
+  | LevelElement { elementNode $1 }
+  | LayoutElement { elementNode $1 }
 
-InlineElement :: { ElementBuilder }
-  : inlineTag { inlineElement (getInlineTag $1) }
+InlineElement :: { Element }
+  : inlineTag OptionalAttrSet OptionalBracedArg
+      { element PresentInline (getInlineTag $1) $2 $3 }
 
-LevelElement :: { ElementBuilder }
-  : levelTag MixedContent endImplicitScope { levelElement (getLevelTag $1) $2 }
+LayoutElement :: { Element }
+  : layoutTag OptionalAttrSet MixedContent endImplicitScope
+      { element PresentLayout (getLayoutTag $1) $2 (Just $3) }
 
-LayoutElement :: { ElementBuilder }
-  : layoutTag MixedContent endImplicitScope { layoutElement (getLayoutTag $1) $2 }
+LevelElement :: { Element }
+  : levelTag OptionalAttrSet MixedContent endImplicitScope
+      { element PresentLevel (getLevelTag $1) $2 (Just $3) }
 
-AttrSetNode :: { NodesBuilder }
-  : startAttr Spaces AttrContent endAttr { attrSetNode (locatedSpan $1) $3 (locatedSpan $4) }
+OptionalAttrSet :: { Maybe AttrsBuilder }
+OptionalAttrSet
+  : {- empty -} { Nothing }
+  | AttrSet { Just $1 }
 
-AttrSet :: { AttrBuilder }
-  : startAttr Spaces AttrContent endAttr { attrSet (locatedSpan $1) $3 (locatedSpan $4) }
+AttrSet :: { AttrsBuilder }
+AttrSet
+  : startAttrSet Spaces Attrs endAttrSet { $3 }
 
-AttrContent :: { AttrBuilder }
-  : Spaces { mempty }
-  | AttrEntries1 Spaces { $1 }
+-- We sort out attribute validation later
+Attrs :: { AttrsBuilder }
+Attrs
+  : {- empty -} { id }
+  | Attrs1 { $1 }
 
-AttrEntries1 :: { AttrBuilder }
-  : AttrEntry { initAttrBuilder $1 }
-  | AttrEntries1 Spaces AttrEntry {% addToAttrBuilderM $3 Nothing $1 }
+Attrs1 :: { AttrsBuilder }
+Attrs1
+  : AttrEntry { singleAttr $1 }
+  | Attrs1 Spaces AttrEntry { addAttr $1 $3 }
 
-AttrEntry :: { AttrBuilderEntry }
-  : AttrKey Spaces equals Spaces AttrVal { AttrBuilderEntry $1 (locatedSpan $3) $5 }
+AttrEntry :: { Attr }
+AttrEntry
+  : AttrKey equals AttrVal { ($1, $3) }
 
-AttrKey :: { Located AttrKey }
-  : text {% resolveAttrKey (getPlainText $1) }
+AttrKey :: { Located Text }
+AttrKey
+  : text { getPlainText $1 }
 
-AttrVal :: { AttrValBuilder }
-  : startBrace MixedContent endBrace Spaces { bracedAttrVal (locatedSpan $1) $2 (locatedSpan $3) }
-  | AttrSet Spaces { attrSetVal $1 }
+AttrVal :: { AttrVal }
+AttrVal
+  : startBrace MixedContent endBrace { bracedAttrVal $2 }
+  | AttrSet { setAttrVal $1 }
+
+OptionalBracedArg :: { Maybe NodeSequence }
+OptionalBracedArg
+  : {- empty -} { Nothing }
+  | startBrace MixedContent endBrace { Just $2 }
 
 Space :: { () }
   : lineSpace { () }
@@ -138,7 +163,7 @@ lexer = (lexToken >>=)
 
 -- | Parse a sequence of intermediate bensalem nodes at the top level
 parseNodes :: Parser [Node]
-parseNodes = toList . unNodesCombine . builderVal <$> pManyNodes
+parseNodes = toList . unNodeSequence <$> pManyNodes
 
 ----------------------------------------------------------------
 -- boring partial functions to extract information from tokens
@@ -169,12 +194,12 @@ getInlineComment :: Located Tok.Token -> Located Text
 getInlineComment (Located x (Tok.LineComment t)) = Located x t
 getInlineComment _ = error "Internal error"
 
--- | Partial function that matches an inline comment
+-- | Partial function that matches a level tag
 getLevelTag :: Located Tok.Token -> Located Text
 getLevelTag (Located x (Tok.LevelTag _ t)) = Located x t
 getLevelTag _ = error "Internal error"
 
--- | Partial function that matches an inline comment
+-- | Partial function that matches a layout tag
 getLayoutTag :: Located Tok.Token -> Located Text
 getLayoutTag (Located x (Tok.LayoutTag t)) = Located x t
 getLayoutTag _ = error "Internal error"

@@ -16,77 +16,38 @@ module Bensalem.Markup.BensalemML.Syntax.Intermediate
   ( -- * Intermediate syntax types
     Node (..),
     Element (..),
-    ScopeContent (..),
+    Presentation (..),
     AttrMap (..),
     AttrKey,
     AttrVal (..),
 
     -- * Intermediate syntax builders
-    Builder (..),
-    MinCol (..),
-    NodesBuilder,
-    NodesCombine (..),
+    NodeSequence (..),
+    AttrsBuilder,
+    Attr,
     text,
-    insigLit,
-    literalAt,
     lineSpace,
     blanks,
     inlineComment,
-    bracedGroup,
-    layoutBracedGroup,
-    inlineVerbatim,
-    inlineVerbatimText,
-    verbatimBacktick,
-    ElementBuilder,
+    elementNode,
     element,
-    inlineElement,
-    levelElement,
-    layoutElement,
-    AttrBuilder,
-    AttrBuilderEntry (..),
-    AttrValBuilder,
-    initAttrBuilder,
-    addToAttrBuilderM,
-    attrSetNode,
-    attrSet,
-    recordTrailing,
-    resolveAttrKey,
+    singleAttr,
+    addAttr,
     bracedAttrVal,
-    openAttrVal,
-    attrSetVal,
+    setAttrVal,
   )
 where
 
 import Bensalem.Markup.BensalemML.ParserDefs
   ( Located (..),
-    Parser,
-    SrcPos (..),
     SrcSpan (..),
-    throwParseErrorNil,
   )
 import Bensalem.Markup.BensalemML.Token (EltName)
-import qualified Bensalem.Markup.BensalemML.Token as Tok
-import Data.Foldable (toList)
 import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as M
 import Data.Sequence (Seq (..))
 import qualified Data.Sequence as Seq
 import Data.Text (Text)
 import qualified Data.Text as T
-
-{-
-
-may be worthwhile having an intermediate node type with lazy text in the plain
-text and, say, decorated with minimum columns so that we can have a single
-[IntermediateNode] -> [Node] pass at the end that resolves all of that.
-
-may also be worthwhile to have the lexer keep track of the minimum columns along
-with the scopes so that information can be reported in the closing token. would
-probably save a decent amount of computation.
-
-may want to change parsing model so that tokens keep track of their trailing
-whitespace. could simplify the happy grammar.
--}
 
 -- | A single node in bensalem syntax
 data Node
@@ -96,9 +57,6 @@ data Node
     LineSpace !Int
   | -- | a line ending
     LineEnd
-  | BracedGroup !SrcSpan ![Node]
-  | LayoutBracedGroup !SrcSpan ![Node]
-  | AttrMapNode !SrcSpan !AttrMap
   | ElementNode !Element
   | InlineComment !Text
   deriving (Eq, Ord, Show)
@@ -110,9 +68,22 @@ data Node
 -- element is always empty.
 data Element = Element
   { elementTagPos :: !SrcSpan,
+    elementPresentation :: !Presentation,
     elementName :: !EltName,
-    elementScopeContent :: !ScopeContent
+    elementAttrs :: !(Maybe [Attr]),
+    elementArg :: !(Maybe (Seq Node))
   }
+  deriving (Eq, Ord, Show)
+
+-- | A raw attribute
+type Attr = (Located Text, AttrVal)
+
+data AttrVal
+  = BracedAttrVal !(Seq Node)
+  | SetAttrVal ![Attr]
+  deriving (Eq, Ord, Show)
+
+data Presentation = PresentInline | PresentLayout | PresentLevel
   deriving (Eq, Ord, Show)
 
 -- | The possible scope content of an element
@@ -123,12 +94,6 @@ data ScopeContent
     LayoutScopeContent !(Seq Node)
   | -- | level elements contain everything in their level scope
     LevelScopeContent !(Seq Node)
-  deriving (Eq, Ord, Show)
-
--- | An attribute value
-data AttrVal
-  = AttrValMarkup [Node]
-  | AttrValMap AttrMap
   deriving (Eq, Ord, Show)
 
 -- | An attribute map that also stores the positions of the /keys/ of the map
@@ -147,96 +112,44 @@ newtype AttrMap = AttrMap
 -- currently matches the definition of element names.
 type AttrKey = Text
 
-validAttrKey :: Text -> Maybe AttrKey
-validAttrKey = Tok.validEltName
-
-resolveAttrKey :: Located Text -> Parser (Located AttrKey)
-resolveAttrKey (Located sp t) = case validAttrKey t of
-  Just e -> pure $ Located sp e
-  Nothing -> throwParseErrorNil
-
--- | A builder for some value @a@, also keeping track of the minimum column
--- achieved in whatever source span it occupies
-data Builder a = Builder
-  { builderMinCol :: !MinCol,
-    builderVal :: !a
-  }
-  deriving (Eq, Ord, Show, Functor)
-
--- | A minimum column value. This is allowed to be 'NoMinCol' to accomodate
--- certain occurrences of white space that have no defined columns
-data MinCol
-  = SomeMinCol !Int
-  | NoMinCol
-  deriving (Eq, Ord, Show)
-
--- | take the minimum value, treating 'NoMinCol' as positive infinity
-instance Semigroup MinCol where
-  SomeMinCol n <> SomeMinCol m = SomeMinCol $ min n m
-  SomeMinCol n <> NoMinCol = SomeMinCol n
-  NoMinCol <> SomeMinCol m = SomeMinCol m
-  NoMinCol <> NoMinCol = NoMinCol
+-- TODO: really need to reintroduce this!
+-- validAttrKey :: Text -> Maybe AttrKey
+-- validAttrKey = Tok.validEltName
 
 -- | A newtype over a sequence of nodes whose semigroup instance will merge
 -- adjacent 'LineSpace' and 'PlainText' nodes
 
 -- TODO: make opaque? want to maintain invariant that line space and plain text
 -- is always merged
-newtype NodesCombine = NodesCombine {unNodesCombine :: Seq Node}
+newtype NodeSequence = NodeSequence {unNodeSequence :: Seq Node}
   deriving (Eq, Ord, Show)
 
-singleNode :: Node -> NodesCombine
-singleNode = NodesCombine . Seq.singleton
+singleNode :: Node -> NodeSequence
+singleNode = NodeSequence . Seq.singleton
 
-instance Semigroup NodesCombine where
-  NodesCombine x@(s :|> n) <> NodesCombine y@(m :<| t) = case (n, m) of
-    (LineSpace a, LineSpace b) -> NodesCombine $ s <> Seq.singleton (LineSpace $ a + b) <> t
-    (PlainText a, PlainText b) -> NodesCombine $ s <> Seq.singleton (PlainText $ a <> b) <> t
-    _ -> NodesCombine $ x <> y
-  NodesCombine x <> NodesCombine Empty = NodesCombine x
-  NodesCombine Empty <> NodesCombine y = NodesCombine y
+instance Semigroup NodeSequence where
+  NodeSequence x@(s :|> n) <> NodeSequence y@(m :<| t) = case (n, m) of
+    (LineSpace a, LineSpace b) -> NodeSequence $ s <> Seq.singleton (LineSpace $ a + b) <> t
+    (PlainText a, PlainText b) -> NodeSequence $ s <> Seq.singleton (PlainText $ a <> b) <> t
+    _ -> NodeSequence $ x <> y
+  NodeSequence x <> NodeSequence Empty = NodeSequence x
+  NodeSequence Empty <> NodeSequence y = NodeSequence y
 
-instance Monoid NodesCombine where
-  mempty = NodesCombine mempty
+instance Monoid NodeSequence where
+  mempty = NodeSequence mempty
 
--- | take the minimum of the two minimum columns and also merge the builder
--- values
-instance Semigroup a => Semigroup (Builder a) where
-  Builder ind1 a <> Builder ind2 b = Builder (ind1 <> ind2) (a <> b)
+type AttrsBuilder = [Attr] -> [Attr]
 
-instance Monoid a => Monoid (Builder a) where
-  mempty = Builder NoMinCol mempty
-
-type NodesBuilder = Builder NodesCombine
-
--- | An attribute set builder
-type AttrBuilder = Builder (Map AttrKey (Located AttrVal))
-
--- | An element builder
-type ElementBuilder = Builder Element
-
--- | An attribute value builder
-type AttrValBuilder = Builder AttrVal
-
--- | Unsafely construct a 'MixedContent' sequence from 'Text' located at a
--- particular 'SrcSpan'. This function does not check that the 'Text' is free of
--- syntactically-significant characters, or that the given 'SrcSpan' occupies a
--- single line.
-text :: Located Text -> NodesBuilder
-text t =
-  Builder
-    { builderMinCol = spanMinCol $ locatedSpan t,
-      builderVal = singleNode $ PlainText $ locatedVal t
-    }
+-- | Unsafely construct a 'MixedContent' sequence from 'Text'. This function
+-- does not check that the 'Text' is free of syntactically-significant
+-- characters.
+text :: Text -> NodeSequence
+text t = singleNode $ PlainText t
 
 -- | Unsafely construct a 'NodesBuilder' sequence from 'Text' consisting of
 -- newlines and spaces
-blanks :: Located Text -> NodesBuilder
-blanks (Located _ t) =
-  Builder
-    { builderMinCol = NoMinCol,
-      builderVal = NodesCombine $ Seq.fromList chunks
-    }
+blanks :: Located Text -> NodeSequence
+blanks (Located _ t) = NodeSequence $ Seq.fromList chunks
   where
     -- slightly different behaviour from Text.lines, since that function doesn't
     -- handle trailing newlines the way it's needed to here
@@ -254,47 +167,46 @@ blanks (Located _ t) =
 
 -- | Unsafely construct a 'NodesBuilder' sequence representing a run of single
 -- spaces.
-lineSpace :: Located Int -> NodesBuilder
-lineSpace (Located _ n) =
-  Builder
-    { builderMinCol = NoMinCol,
-      builderVal = singleNode $ LineSpace n
-    }
+lineSpace :: Located Int -> NodeSequence
+lineSpace (Located _ n) = singleNode $ LineSpace n
 
-bracedGroup :: SrcSpan -> NodesBuilder -> SrcSpan -> NodesBuilder
-bracedGroup sp1 nb sp2 =
-  Builder
-    { builderMinCol = spanMinCol sp1 <> spanMinCol sp2 <> builderMinCol nb,
-      builderVal = singleNode $ BracedGroup sp $ resolveBracedNodes nb
-    }
+inlineComment :: Located Text -> NodeSequence
+inlineComment (Located _ t) = singleNode $ InlineComment t
+
+elementNode :: Element -> NodeSequence
+elementNode = singleNode . ElementNode
+
+element :: Presentation -> Located EltName -> Maybe AttrsBuilder -> Maybe NodeSequence -> Element
+element pres elname attrs content =
+  Element (locatedSpan elname) pres (locatedVal elname) attrs' content'
   where
-    sp = sp1 {srcSpanEnd = srcSpanEnd sp2}
+    attrs' = attrs <*> pure []
+    content' = unNodeSequence <$> content
 
-layoutBracedGroup :: SrcSpan -> NodesBuilder -> NodesBuilder
-layoutBracedGroup sp nb =
-  Builder
-    { builderMinCol = spanMinCol sp <> internalIndent,
-      builderVal =
-        singleNode $
-          LayoutBracedGroup sp $
-            toList $
-              mstripIndent internalIndent $
-                stripEndBlank $
-                  unNodesCombine $
-                    builderVal nb
-    }
-  where
-    internalIndent = builderMinCol nb
+singleAttr :: Attr -> AttrsBuilder
+singleAttr = (:)
 
+addAttr :: AttrsBuilder -> Attr -> AttrsBuilder
+addAttr x y = x . (y :)
+
+bracedAttrVal :: NodeSequence -> AttrVal
+bracedAttrVal = BracedAttrVal . unNodeSequence
+
+setAttrVal :: AttrsBuilder -> AttrVal
+setAttrVal = SetAttrVal . ($ [])
+
+{-
 inlineComment :: Located Text -> NodesBuilder
 inlineComment (Located sp t) =
   Builder
     { builderMinCol = spanMinCol sp,
       builderVal = singleNode $ InlineComment t
     }
-
+-}
+{-
 -- | Inline element builder
-inlineElement :: Located EltName -> ElementBuilder
+inlineElement ::
+  Located EltName -> Maybe AttrsBuilder -> Maybe [Node] -> ElementBuilder
 inlineElement nm =
   Builder
     { builderMinCol = n,
@@ -318,7 +230,7 @@ levelElement nm nb =
         LevelScopeContent $
           mstripIndent internalIndent $
             stripAllEndSpace $
-              unNodesCombine $
+              unNodeSequence $
                 builderVal nb
 
 layoutElement :: Located EltName -> NodesBuilder -> ElementBuilder
@@ -335,7 +247,7 @@ layoutElement nm nb =
         LayoutScopeContent $
           mstripIndent internalIndent $
             stripEndBlank $
-              unNodesCombine $
+              unNodeSequence $
                 builderVal nb
 
 element :: ElementBuilder -> NodesBuilder
@@ -362,42 +274,22 @@ inlineVerbatim ::
 inlineVerbatim sp1 nb sp2 =
   Builder
     { builderMinCol = spanMinCol sp1 <> spanMinCol sp2 <> builderMinCol nb,
-      builderVal = NodesCombine nodes
+      builderVal = NodeSequence nodes
     }
   where
-    nodes = case stripEndBlank $ unNodesCombine $ builderVal nb of
+    nodes = case stripEndBlank $ unNodeSequence $ builderVal nb of
       LineSpace _ :<| LineEnd :<| xs -> xs
       LineEnd :<| xs -> xs
       x -> x
 
--- TODO: can probably just pass in the token and re-render it for the PlainText
-insigLit :: Text -> SrcSpan -> NodesBuilder
-insigLit t sp =
-  Builder
-    { builderMinCol = spanMinCol sp,
-      builderVal = singleNode $ PlainText t
-    }
-
--- TODO: obviously just insigLit
-literalAt :: SrcSpan -> NodesBuilder
-literalAt sp =
-  Builder
-    { builderMinCol = spanMinCol sp,
-      builderVal = singleNode $ PlainText "@"
-    }
-
 data AttrBuilderEntry
   = AttrBuilderEntry !(Located EltName) !SrcSpan !AttrValBuilder
 
--- | Add a key-value pair to an 'AttrBuilder', also taking in the 'SrcSpan' of
--- the @=@ assignment and the optional comma separator. Fails if the given key
--- is already assigned in the 'AttrBuilder'.
-addToAttrBuilder ::
-  AttrBuilderEntry ->
-  Maybe SrcSpan ->
-  AttrBuilder ->
-  Maybe AttrBuilder
-addToAttrBuilder (AttrBuilderEntry locKey assignSp val) msepSp ab =
+addAttr ::
+  AttrsBuilder ->
+  AttrValBuilder ->
+  Maybe AttrsBuilder
+addAttr (AttrBuilderEntry locKey assignSp val) msepSp ab =
   case M.alterF go (locatedVal locKey) $ builderVal ab of
     Just m ->
       Just $!
@@ -415,35 +307,15 @@ addToAttrBuilder (AttrBuilderEntry locKey assignSp val) msepSp ab =
     go Nothing = Just $! Just $! locKey {locatedVal = builderVal val}
     go (Just _) = Nothing
 
--- TODO: I think the Maybe SrcSpan here can be eliminated entirely, as that was
--- formerly the srcspan of the comma separator, I'm pretty sure
-addToAttrBuilderM :: AttrBuilderEntry -> Maybe SrcSpan -> AttrBuilder -> Parser AttrBuilder
-addToAttrBuilderM x y z = case addToAttrBuilder x y z of
-  Just m -> pure m
-  Nothing -> throwParseErrorNil
-
-initAttrBuilder :: AttrBuilderEntry -> AttrBuilder
-initAttrBuilder (AttrBuilderEntry locKey assignSp val) =
-  Builder
-    { builderMinCol = mincol,
-      builderVal = M.singleton (locatedVal locKey) val'
-    }
-  where
-    mincol =
-      spanMinCol assignSp
-        <> spanMinCol (locatedSpan locKey)
-        <> builderMinCol val
-    val' = locKey {locatedVal = builderVal val}
-
 -- | Record the brackets around the content of an 'AttrSet'
 attrSet :: SrcSpan -> AttrBuilder -> SrcSpan -> AttrBuilder
 attrSet = recordAround
 
-attrSetNode :: SrcSpan -> AttrBuilder -> SrcSpan -> NodesBuilder
-attrSetNode x a y = go <$> recordAround x a y
-  where
-    mapspan = x {srcSpanEnd = srcSpanEnd y}
-    go = singleNode . AttrMapNode mapspan . AttrMap
+-- attrSetNode :: SrcSpan -> AttrBuilder -> SrcSpan -> NodesBuilder
+-- attrSetNode x a y = go <$> recordAround x a y
+--   where
+--     mapspan = x {srcSpanEnd = srcSpanEnd y}
+--     go = singleNode . AttrMapNode mapspan . AttrMap
 
 bracedAttrVal :: SrcSpan -> NodesBuilder -> SrcSpan -> AttrValBuilder
 bracedAttrVal sp1 nb sp2 =
@@ -497,7 +369,7 @@ stripAllEndSpace x = x
 resolveBracedNodes :: NodesBuilder -> [Node]
 resolveBracedNodes nb = toList $
   mstripIndent (builderMinCol nb) $
-    case stripEndBlank $ unNodesCombine $ builderVal nb of
+    case stripEndBlank $ unNodeSequence $ builderVal nb of
       LineSpace _ :<| LineEnd :<| xs -> xs
       LineEnd :<| xs -> xs
       x -> x
@@ -511,7 +383,7 @@ resolveBracedNodes nb = toList $
 resolveLevelNodes :: NodesBuilder -> [Node]
 resolveLevelNodes nb =
   mstripIndent (builderMinCol nb) $
-    stripBegin $ toList $ stripAllEndSpace $ unNodesCombine $ builderVal nb
+    stripBegin $ toList $ stripAllEndSpace $ unNodeSequence $ builderVal nb
   where
     stripBegin (LineSpace _ : x) = stripBegin x
     stripBegin (LineEnd : x) = stripBegin x
@@ -526,7 +398,7 @@ resolveLevelNodes nb =
 resolveLayoutNodes :: NodesBuilder -> [Node]
 resolveLayoutNodes nb =
   mstripIndent (builderMinCol nb) $
-    stripBegin $ toList $ stripEndBlank $ unNodesCombine $ builderVal nb
+    stripBegin $ toList $ stripEndBlank $ unNodeSequence $ builderVal nb
   where
     stripBegin (LineSpace _ : x) = stripBegin x
     stripBegin (LineEnd : x) = x
@@ -538,7 +410,7 @@ resolveLayoutNodes nb =
 -- trailing white space, and all indentation.
 resolveUnbracedAttrVal :: NodesBuilder -> [Node]
 resolveUnbracedAttrVal nb =
-  stripAllIndent $ stripBegin $ toList $ stripAllEndSpace $ unNodesCombine $ builderVal nb
+  stripAllIndent $ stripBegin $ toList $ stripAllEndSpace $ unNodeSequence $ builderVal nb
   where
     stripBegin (LineSpace _ : x) = stripBegin x
     stripBegin (LineEnd : x) = stripBegin x
@@ -566,3 +438,4 @@ stripIndent minCol = go
 mstripIndent :: MinCol -> Seq Node -> Seq Node
 mstripIndent (SomeMinCol n) = stripIndent n
 mstripIndent NoMinCol = id
+-}

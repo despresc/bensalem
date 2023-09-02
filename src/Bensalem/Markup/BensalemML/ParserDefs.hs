@@ -42,6 +42,7 @@ module Bensalem.Markup.BensalemML.ParserDefs
   )
 where
 
+import Bensalem.Markup.BensalemML.Token (Token)
 import Control.Monad.Except (Except, MonadError (..), runExcept)
 import Control.Monad.State.Strict
   ( MonadState (..),
@@ -54,7 +55,6 @@ import Data.Char (ord)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Word (Word8)
-import Bensalem.Markup.BensalemML.Token (Token)
 
 newtype Parser a = Parser
   { unParser :: StateT ParseState (Except ParseError) a
@@ -266,21 +266,21 @@ alexGetByte ai@(AlexInput tw sn sp ns b0 b1 b2 inp) = case ns of
         b2' = fromIntegral $ 0x80 + ((oc' `Bits.shiftR` 12) Bits..&. 0x3f)
         ret
           | oc' <= 0x7f =
-            ( fromIntegral oc',
-              AlexInput tw sn sp' 0 0 0 0 inp'
-            )
+              ( fromIntegral oc',
+                AlexInput tw sn sp' 0 0 0 0 inp'
+              )
           | oc' <= 0x7ff =
-            ( fromIntegral $ 0xc0 + (oc' `Bits.shiftR` 6),
-              AlexInput tw sn sp' 1 b0' 0 0 inp'
-            )
+              ( fromIntegral $ 0xc0 + (oc' `Bits.shiftR` 6),
+                AlexInput tw sn sp' 1 b0' 0 0 inp'
+              )
           | oc' <= 0x7fff =
-            ( fromIntegral $ 0xe0 + (oc' `Bits.shiftR` 12),
-              AlexInput tw sn sp' 2 b0' b1' 0 inp'
-            )
+              ( fromIntegral $ 0xe0 + (oc' `Bits.shiftR` 12),
+                AlexInput tw sn sp' 2 b0' b1' 0 inp'
+              )
           | otherwise =
-            ( fromIntegral $ 0xf0 + (oc' `Bits.shiftR` 18),
-              AlexInput tw sn sp' 3 b0' b1' b2' inp'
-            )
+              ( fromIntegral $ 0xf0 + (oc' `Bits.shiftR` 18),
+                AlexInput tw sn sp' 3 b0' b1' b2' inp'
+              )
     Nothing -> Nothing
   1 -> Just (b0, ai {alexInputNumSurplusBytes = 0})
   2 -> Just (b1, ai {alexInputNumSurplusBytes = 1})

@@ -35,7 +35,7 @@ data Token
     StartBraceGroup
   | -- | @}@
     EndBraceGroup
-  | -- | @[@
+  | -- | @[@ right after a tag
     StartAttrSet
   | -- | @]@
     EndAttrSet
@@ -44,6 +44,9 @@ data Token
   | -- | virtual token (zero-width, not appearing explicitly in the source)
     -- denoting the end of content for a level or layout element
     EndImplicitScope
+  | -- | virtual token that is emitted just after indentation and just before
+    -- printing text, to be used for indentation stripping
+    MinCol !Int
   | -- | the end of file token. should only appear as the final token in a
     -- stream
     TokenEOF
@@ -65,6 +68,7 @@ renderToken StartAttrSet = "["
 renderToken EndAttrSet = "]"
 renderToken Equals = "="
 renderToken EndImplicitScope = ""
+renderToken (MinCol _) = ""
 renderToken TokenEOF = ""
 
 -- | The line that a 'BlankLine' or 'Indent' token starts, or the line

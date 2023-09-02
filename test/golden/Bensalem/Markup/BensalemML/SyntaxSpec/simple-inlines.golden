@@ -1,0 +1,89 @@
+[ ElementNode
+ ( Element
+  { elementTagPos = SrcSpan
+   { srcSpanName = ""
+   , srcSpanStart = SrcPos
+    { srcOffset = 0
+    , srcLine = 1
+    , srcCol = 1
+    }
+   , srcSpanEnd = SrcPos
+    { srcOffset = 10
+    , srcLine = 1
+    , srcCol = 11
+    }
+   }
+  , elementArgPresentation = PresentInline
+  , elementName = "inlineelt"
+  , elementAttrs = []
+  , elementArg = []
+  }
+ )
+, LineEnd
+, ElementNode
+ ( Element
+  { elementTagPos = SrcSpan
+   { srcSpanName = ""
+   , srcSpanStart = SrcPos
+    { srcOffset = 11
+    , srcLine = 2
+    , srcCol = 1
+    }
+   , srcSpanEnd = SrcPos
+    { srcOffset = 21
+    , srcLine = 2
+    , srcCol = 11
+    }
+   }
+  , elementArgPresentation = PresentInline
+  , elementName = "inlineelt"
+  , elementAttrs = []
+  , elementArg = []
+  }
+ )
+, LineEnd
+, ElementNode
+ ( Element
+  { elementTagPos = SrcSpan
+   { srcSpanName = ""
+   , srcSpanStart = SrcPos
+    { srcOffset = 24
+    , srcLine = 3
+    , srcCol = 1
+    }
+   , srcSpanEnd = SrcPos
+    { srcOffset = 34
+    , srcLine = 3
+    , srcCol = 11
+    }
+   }
+  , elementArgPresentation = PresentInline
+  , elementName = "inlineelt"
+  , elementAttrs = []
+  , elementArg = []
+  }
+ )
+, LineEnd
+, ElementNode
+ ( Element
+  { elementTagPos = SrcSpan
+   { srcSpanName = ""
+   , srcSpanStart = SrcPos
+    { srcOffset = 37
+    , srcLine = 4
+    , srcCol = 1
+    }
+   , srcSpanEnd = SrcPos
+    { srcOffset = 47
+    , srcLine = 4
+    , srcCol = 11
+    }
+   }
+  , elementArgPresentation = PresentInline
+  , elementName = "inlineelt"
+  , elementAttrs = []
+  , elementArg = []
+  }
+ )
+, LineEnd
+]
