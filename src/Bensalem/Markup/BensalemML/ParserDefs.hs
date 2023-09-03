@@ -94,8 +94,6 @@ data ParseState = ParseState
     -- | any pending tokens to be emitted before further consumption of input
     parseStatePendingTokens :: ![Located Token],
     -- | a possible pending 'Tok.Indent' token before an upcoming 'Tok.NumTag'
-    parseStatePendingIndent :: !(Maybe (Located Token)),
-    -- | the current layout depth (ambient indentation)
     parseStateLayoutDepth :: !Int,
     -- | the current stack of scopes
     parseStateScopeStack :: ![Scope],
@@ -110,7 +108,6 @@ initParseState ai =
     { parseStateStartCode = 0,
       parseStateInput = ai,
       parseStatePendingTokens = [],
-      parseStatePendingIndent = Nothing,
       parseStateLayoutDepth = 0,
       parseStateScopeStack = [],
       parseStateStartVerbatimLoc = Nothing

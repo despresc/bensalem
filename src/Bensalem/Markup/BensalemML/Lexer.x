@@ -70,7 +70,7 @@ tokens :-
 -- | Parse a single token from the input stream
 lexToken :: Parser (Located Token)
 lexToken = do
-  parsestate@(ParseState sc inp toks _ _ _ _) <- get
+  parsestate@(ParseState sc inp toks _ _ _) <- get
   case toks of
     (t:toks') -> put (parsestate { parseStatePendingTokens = toks' }) *> pure t
     _ -> case alexScan inp sc of

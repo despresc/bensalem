@@ -31,6 +31,7 @@ import Control.Monad.State.Strict
   ( gets,
     modify,
   )
+import Data.Functor (($>))
 import Data.Text (Text)
 import qualified Data.Text as T
 
@@ -63,22 +64,84 @@ setScopeStack s = modify $ \x -> x {parseStateScopeStack = s}
 setPendingTokens :: [Located Token] -> Parser ()
 setPendingTokens toks = modify $ \s -> s {parseStatePendingTokens = toks}
 
-setPendingIndent :: Located Token -> Parser ()
-setPendingIndent t = modify $ \s -> s {parseStatePendingIndent = Just t}
-
-clearPendingIndent :: Parser ()
-clearPendingIndent = modify $ \s -> s {parseStatePendingIndent = Nothing}
-
 -- | Construct a zero-width 'Tok.EndImplicitScope' at the start of the given 'SrcSpan'
 conVirtual :: SrcSpan -> Located Token
 conVirtual sp = Located sp' Tok.EndImplicitScope
   where
     sp' = sp {srcSpanEnd = srcSpanStart sp}
 
+data ScopePop a
+  = -- | continue with scope popping
+    ScopeContinue a
+  | -- | consume this last scope and stop
+    ScopeStop a
+  | -- | preserve this last scope and stop
+    ScopeEnd
+
+-- | Resolve scopes using the given scope resolving function, returning a
+-- difference list of the results. Note that @gatherScopesDL f act@ has the
+-- property that if @f@ never returns 'ScopeEnd' then the returned difference
+-- list will always be non-empty. It is also true that that returned difference
+-- list will be non-empty when given a non-empty input.
+
+-- TODO: anywhere this is used is not particularly elegant because we really
+-- want a (_ -> NonEmpty a) return value. guaranteeing that is a bit of a pain,
+-- though.
+
+-- TODO: if we ever get a "global" scope, then we won't need the action to run
+-- at the end, because we can just decide to do something upon encountering the
+-- global scope
+gatherScopesDL ::
+  -- | function to resolve one scope
+  (Scope -> Parser (ScopePop a)) ->
+  -- | action to run if the end of the scope stack is reached
+  Parser () ->
+  Parser ([a] -> [a])
+gatherScopesDL f globalScopeAct = do
+  scopes <- gets parseStateScopeStack
+  (dl, scopes') <- go id scopes
+  setScopeStack scopes'
+  pure dl
+  where
+    go acc (s : ss) = do
+      pa <- f s
+      case pa of
+        ScopeContinue a -> go (acc . (a :)) ss
+        ScopeStop a -> pure (acc . (a :), ss)
+        ScopeEnd -> pure (acc, s : ss)
+    go acc [] = globalScopeAct $> (acc, [])
+
+-- | Unsafely extract the head and tail of a non-empty difference list. You must
+-- be able to prove that the input is in fact non-empty! See the documentation
+-- for 'gatherScopesDL' for some facts you can use to do this, since this is
+-- only ever used on the (derivatives of) that function.
+--
+-- Obviously this is all kind of a hack, and with some effort (and probably less
+-- elegance) the use of this function can be eliminated.
+unsafeNonEmptyDL :: ([a] -> [a]) -> (a, [a])
+unsafeNonEmptyDL l = case l [] of
+  x : xs -> (x, xs)
+  [] -> error "Internal error - difference list cannot be empty"
+
 -- | Resolve all active level scopes with depth greater than or equal to the
 -- given 'Int', using the passed 'Text' and 'SrcPos' for the location of the
 -- emitted virtual tokens. Also takes in the level token itself and returns the
 -- appropriate token to be emitted immediately by the lexer.
+resolveLevelScopes :: SrcSpan -> Int -> Token -> Parser (Located Token)
+resolveLevelScopes spn n tok = do
+  toksDL <- gatherScopesDL willBeClosed (pure ())
+  pushScope $ Scope (LevelScope n) spn
+  let (emitTok, pending) = unsafeNonEmptyDL $ toksDL . (Located spn tok :)
+  setPendingTokens pending
+  pure emitTok
+  where
+    willBeClosed scope
+      | LevelScope m <- scopeType scope,
+        m >= n =
+          pure $ ScopeContinue $ conVirtual spn
+      | otherwise = pure ScopeEnd
+
+{-
 resolveLevelScopes :: SrcSpan -> Int -> Token -> Parser (Located Token)
 resolveLevelScopes spn n tok = do
   scopes <- gets parseStateScopeStack
@@ -98,6 +161,7 @@ resolveLevelScopes spn n tok = do
         m >= n =
           popLevelLen' (len + 1) scopes
       | otherwise = (len, ss)
+-}
 
 -- | Handle a line comment
 doLineComment :: AlexAction
@@ -132,34 +196,25 @@ doStartBraceGroup _ sp _ = do
 
 -- | Handle the end of a braced group. The end of a braced group resolves all
 -- layout and level scopes, then resolves a single braced scope. A lexical error
--- is thrown if an attribute set scope is encountered before a braced scope is
--- seen, or if no braced scope is found.
+-- is thrown if no braced scope is found.
 doEndBraceGroup :: AlexAction
 doEndBraceGroup _ sp _ = do
-  scopes <- gets parseStateScopeStack
-  resolveScopes scopes
+  toksDL <- gatherScopesDL willBeClosed globalAct
+  -- since willBeClosed never returns ScopeEnd, this is total (see note in
+  -- gatherScopesDL documentation)
+  let (emitTok, pending) = unsafeNonEmptyDL toksDL
+  setPendingTokens pending
+  pure emitTok
   where
     tokEnd = conVirtual sp
     tokBrace = Located sp Tok.EndBraceGroup
-    resolveScopes (scope : scopes) = case scopeType scope of
-      BraceScope -> do
-        setScopeStack scopes
-        pure tokBrace
+    willBeClosed scope = case scopeType scope of
+      BraceScope -> pure $ ScopeStop tokBrace
       LayoutScope _ ambient -> do
         setLayoutDepth ambient
-        resolveScopes' [tokBrace] scopes
-      LevelScope _ -> resolveScopes' [tokBrace] scopes
-    resolveScopes [] = throwLexError sp UnmatchedEndBraceGroup
-    resolveScopes' acc (scope : scopes) = case scopeType scope of
-      BraceScope -> do
-        setScopeStack scopes
-        setPendingTokens acc
-        pure tokEnd
-      LayoutScope _ ambient -> do
-        setLayoutDepth ambient
-        resolveScopes' (tokEnd : acc) scopes
-      LevelScope _ -> resolveScopes' (tokEnd : acc) scopes
-    resolveScopes' _ [] = throwLexError sp UnmatchedEndBraceGroup
+        pure $ ScopeContinue tokEnd
+      LevelScope _ -> pure $ ScopeContinue tokEnd
+    globalAct = throwLexError sp UnmatchedEndBraceGroup
 
 -- | Handle the start of a layout block, pushing a new 'LayoutScope' onto the
 -- stack and setting the new layout depth
@@ -194,10 +249,68 @@ doInlineTag _ sp t = case Tok.validEltName tagt of
 -- the length of that run is its layout depth, and otherwise its layout depth is
 -- equal to 1. An indentation token resolves all layout and level scopes until
 -- the current layout depth is less than the level of the token. A lexical error
--- is thrown if a brace or attribute scope is encountered during this process.
--- This action must also look ahead to see if there is an upcoming level tag,
--- and if so, potentially delay the emission of the indent token to just before
--- the emission of that level tag.
+-- is thrown if a brace scope is encountered during this process. This action
+-- must also look ahead to see if there is an upcoming level tag, and if so,
+-- potentially delay the emission of the indent token to just before the
+-- emission of that level tag.
+
+{- Note on the blank delay and other things
+
+Say we have some blank space just before a lot of level tags have their scope
+closed. Suppose I institute the rule that that blank space gets tokenized as
+belonging to the innermost level scope. Now consider the example I had in
+mind before:
+
+--------
+@#lvl
+@##sublvl
+   @&tag @&other
+
+ @#otherlvl
+--------
+
+(weird indentation levels added for clarity, and technically this golden test
+cases in level-closing-layout-{1,2}.input in the tokenizer tests have trailing
+newlines in the files, but let's ignore that).
+
+The naive tokenization of this example is
+
+[ LevelTag 1 "lvl"
+, Blanks "\n"
+, LevelTag 2 "sublvl"
+, Blanks "\n   "
+, LayoutTag "tag"
+, LineSpace 1
+, LayoutTag "other"
+, Blanks "\n\n "
+, LevelTag 1 "otherlvl"
+]
+
+The `Blanks "\n\n "` token belongs to the content of `@##sublvl`, and so when we
+emit our implicit end scope tokens we must actually produce the token sequence
+
+[ LevelTag 1 "lvl"
+, Blanks "\n"
+, LevelTag 2 "sublvl"
+, Blanks "\n   "
+, LayoutTag "tag"
+, LineSpace 1
+, LayoutTag "other"
+, EndImplicitScope -- ends @&other
+, EndImplicitScope -- ends @&tag
+, Blanks "\n\n "
+, EndImplicitScope -- ends @##sublvl
+, EndImplicitScope -- ends @#lvl
+, LevelTag 1 "otherlvl"
+, EndImplicitScope -- ends @#otherlvl
+]
+
+If that is true then the behaviour in this function is /wrong/! We really want
+to emit the blanks right away!
+
+This would embody the following principle: blanks get added to the innermost
+scope that the /do not participate in closing/! Much easier.
+-}
 doBlanks :: AlexAction
 doBlanks _ sp t = do
   scopes <- gets parseStateScopeStack
@@ -237,8 +350,8 @@ doBlanks _ sp t = do
           | LevelScope m <- scopeType scope,
             m >= upcomingLevelDepth -> do
               let toks = replicate numVirtuals $ conVirtual sp
-              setPendingIndent $ Located sp $ Tok.Blanks t
-              setPendingTokens toks
+              -- TODO: fix with gatherscopesdl!
+              setPendingTokens $ toks <> [Located sp (Tok.Blanks t)]
               setScopeStack scopes'
               pure $ conVirtual sp
         _ -> do
@@ -277,27 +390,6 @@ replicateEndImplicitScope sp tok n
     locTok = Located sp tok
     go m acc
       | m == n = (tokEnd, acc [locTok])
-      | otherwise = go (m + 1) (acc . (tokEnd :))
-
--- | Like 'replicateEndImplicitScope', but also takes a possibly-pending token to emit
--- just before the passed token.
-replicateEndImplicitScope' ::
-  SrcSpan ->
-  Maybe (Located Token) ->
-  Token ->
-  Int ->
-  (Located Token, [Located Token])
-replicateEndImplicitScope' sp Nothing tok n = replicateEndImplicitScope sp tok n
-replicateEndImplicitScope' sp (Just pending) tok n
-  | n <= 0 = (pending, [locTok])
-  | otherwise = go 1 id
-  where
-    -- importantly, we want all of the emitted EndImplicitScope tokens to be
-    -- located just before the optional pending token, not the passed token.
-    tokEnd = conVirtual $ locatedSpan pending
-    locTok = Located sp tok
-    go m acc
-      | m == n = (tokEnd, acc [pending, locTok])
       | otherwise = go (m + 1) (acc . (tokEnd :))
 
 -- | Resolve all pending scopes, throwing a lexer error if there are any pending
