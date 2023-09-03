@@ -86,18 +86,6 @@ data Element = Element
   }
   deriving (Eq, Ord, Show)
 
-data ElementArg = ElementArg
-  { elementArgTy :: ElementArgTy,
-    elementArgContent :: Seq Node
-  }
-  deriving (Eq, Ord, Show)
-
-data ElementArgTy
-  = ElementArgBraced SrcSpan
-  | ElementArgLayout SrcSpan
-  | ElementArgBody
-  deriving (Eq, Ord, Show)
-
 -- TODO: opaqueness and checking of the AttrKey
 data Attr = Attr !SrcSpan !AttrKey !AttrVal
   deriving (Eq, Ord, Show)
