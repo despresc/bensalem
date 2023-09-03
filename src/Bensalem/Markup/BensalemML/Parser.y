@@ -163,8 +163,8 @@ lexer :: (Located Tok.Token -> Parser a) -> Parser a
 lexer = (lexToken >>=)
 
 -- | Parse a sequence of intermediate bensalem nodes at the top level
-parseNodes :: Parser [Node]
-parseNodes = toList . unNodeSequence <$> pManyNodes
+parseNodes :: Parser (Seq Node)
+parseNodes = unNodeSequence <$> pManyNodes
 
 ----------------------------------------------------------------
 -- boring partial functions to extract information from tokens

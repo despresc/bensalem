@@ -14,7 +14,7 @@ module Bensalem.Markup.BensalemML.Syntax
   ( -- * Syntax types
     Node (..),
     Element (..),
-    SI.Presentation(..),
+    SI.Presentation (..),
     AttrKey,
     AttrVal (..),
 
@@ -34,7 +34,6 @@ import Bensalem.Markup.BensalemML.ParserDefs
 import qualified Bensalem.Markup.BensalemML.Syntax.Intermediate as SI
 import Bensalem.Markup.BensalemML.Token (EltName)
 import Data.Sequence (Seq (..))
-import qualified Data.Sequence as Seq
 import Data.Text (Text)
 
 -- | Parse a sequence of bensalem nodes from the given input. These nodes are
@@ -50,7 +49,7 @@ parseNodesTW ::
   Either ParseError (Seq Node)
 parseNodesTW tw nm inp = do
   nodes <- evalParser SP.parseNodes $ initAlexInput tw nm inp
-  fromIntermediateNodes $ Seq.fromList nodes
+  fromIntermediateNodes nodes
 
 -- | Parse a sequence of bensalem nodes from the given input with
 -- 'parseNodesTW', with a default tab width of 8
