@@ -1,5 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
-
 -- |
 -- Description : Lexer actions
 -- Copyright   : 2021 Christian Despres
@@ -141,28 +139,6 @@ resolveLevelScopes spn n tok = do
           pure $ ScopeContinue $ conVirtual spn
       | otherwise = pure ScopeEnd
 
-{-
-resolveLevelScopes :: SrcSpan -> Int -> Token -> Parser (Located Token)
-resolveLevelScopes spn n tok = do
-  scopes <- gets parseStateScopeStack
-  let (pendingTokLen, newScopes) = popLevelLen scopes
-  setScopeStack newScopes
-  pushScope $ Scope (LevelScope n) spn
-  pendingIndent <- gets parseStatePendingIndent
-  let (emitTok, toks) = replicateEndImplicitScope' spn pendingIndent tok pendingTokLen
-  setPendingTokens toks
-  clearPendingIndent
-  pure emitTok
-  where
-    popLevelLen = popLevelLen' (0 :: Int)
-    popLevelLen' !len ss
-      | scope : scopes <- ss,
-        LevelScope m <- scopeType scope,
-        m >= n =
-          popLevelLen' (len + 1) scopes
-      | otherwise = (len, ss)
--}
-
 -- | Handle a line comment
 doLineComment :: AlexAction
 doLineComment _ sp t = pure $ Located sp $ Tok.LineComment t'
@@ -249,148 +225,77 @@ doInlineTag _ sp t = case Tok.validEltName tagt of
 -- the length of that run is its layout depth, and otherwise its layout depth is
 -- equal to 1. An indentation token resolves all layout and level scopes until
 -- the current layout depth is less than the level of the token. A lexical error
--- is thrown if a brace scope is encountered during this process. This action
--- must also look ahead to see if there is an upcoming level tag, and if so,
--- potentially delay the emission of the indent token to just before the
--- emission of that level tag.
+-- is thrown if a brace scope is encountered during this process.
 
-{- Note on the blank delay and other things
+{-
 
-Say we have some blank space just before a lot of level tags have their scope
-closed. Suppose I institute the rule that that blank space gets tokenized as
-belonging to the innermost level scope. Now consider the example I had in
-mind before:
+N.B. We operate under the principle that the blanks that this function handles
+will be included inside the first scope that the blanks do not participate in
+closing. This makes sense, and is only slightly weird (if at all) in two
+scenarios:
+
+1. In the input:
 
 --------
-@#lvl
-@##sublvl
-   @&tag @&other
+@#lvl1
 
- @#otherlvl
+@##lvl2
+
+@#lvl3
 --------
 
-(weird indentation levels added for clarity, and technically this golden test
-cases in level-closing-layout-{1,2}.input in the tokenizer tests have trailing
-newlines in the files, but let's ignore that).
+the blanks between lvl2 and lvl3 get lexed as if they belonged to lvl2.
 
-The naive tokenization of this example is
+2. At the end of input, trailing blanks will always be parsed as if they
+belonged to the global implicit scope, so in particular in the snippet
 
-[ LevelTag 1 "lvl"
-, Blanks "\n"
-, LevelTag 2 "sublvl"
-, Blanks "\n   "
-, LayoutTag "tag"
-, LineSpace 1
-, LayoutTag "other"
-, Blanks "\n\n "
-, LevelTag 1 "otherlvl"
-]
+--------
+@#lvl1
 
-The `Blanks "\n\n "` token belongs to the content of `@##sublvl`, and so when we
-emit our implicit end scope tokens we must actually produce the token sequence
+@##lvl2
 
-[ LevelTag 1 "lvl"
-, Blanks "\n"
-, LevelTag 2 "sublvl"
-, Blanks "\n   "
-, LayoutTag "tag"
-, LineSpace 1
-, LayoutTag "other"
-, EndImplicitScope -- ends @&other
-, EndImplicitScope -- ends @&tag
-, Blanks "\n\n "
-, EndImplicitScope -- ends @##sublvl
-, EndImplicitScope -- ends @#lvl
-, LevelTag 1 "otherlvl"
-, EndImplicitScope -- ends @#otherlvl
-]
+@#lvl3
 
-If that is true then the behaviour in this function is /wrong/! We really want
-to emit the blanks right away!
+--------
 
-This would embody the following principle: blanks get added to the innermost
-scope that the /do not participate in closing/! Much easier.
+the trailing blanks get lexed as if they did /not/ belong to any of the elements
+lvl1, lvl2, or lvl3.
+
+In both cases this does not matter at all, since we strip all initial and final
+whitespace from level elements anyway, but it does mean that there might
+sometimes be odd trailing whitespace hanging around at the end of input. This
+can be fixed fairly in a variety of ways, but it's very inconsequential at the
+moment.
+
 -}
+
 doBlanks :: AlexAction
 doBlanks _ sp t = do
-  scopes <- gets parseStateScopeStack
+  -- if we're about to hit the end of input, then we need to close every level
+  -- and layout scope.
+  let willBeClosedEOF scope = case scopeType scope of
+        LevelScope _ -> pure $ ScopeContinue $ conVirtual sp
+        LayoutScope _ _ -> pure $ ScopeContinue $ conVirtual sp
+        BraceScope -> throwLexError sp $ UnmatchedStartBraceGroup (scopePos scope)
+  let incomingColumn = srcCol $ srcSpanEnd sp
+  let willBeClosedOther scope = do
+        layoutDepth <- gets parseStateLayoutDepth
+        if layoutDepth >= incomingColumn
+          then case scopeType scope of
+            LevelScope _ -> pure $ ScopeContinue $ conVirtual sp
+            LayoutScope _ ambientLvl -> do
+              setLayoutDepth ambientLvl
+              pure $ ScopeContinue $ conVirtual sp
+            BraceScope -> throwLexError sp $ DeIndentInBracedGroup $ scopePos scope
+          else pure ScopeEnd
   currInput <- gets $ alexInputText . parseStateInput
-  -- delicate handling: if we're just before EOF then any trailing spaces must
-  -- be considered to be part of a blank line, and hence the Indent token in
-  -- question must have a layout depth of 1 regardless of what its ending column
-  -- is. the correct layout depth is 1 because EOF closes all pending layout and
-  -- level scopes. we may also need to delay the emission of the indent if we
-  -- are about to lex the start of a level element, hence the lookahead for that
-  -- too.
-  let (tokLevel, upcomingLevelDepth) =
-        case T.uncons currInput of
-          Just ('#', _) -> (srcCol $ srcSpanEnd sp, Just lvl)
-          Just _ -> (srcCol $ srcSpanEnd sp, Nothing)
-          Nothing -> (1, Nothing)
-        where
-          lvl = T.length $ T.takeWhile (== '#') currInput
-  go upcomingLevelDepth tokLevel (0 :: Int) scopes
-  where
-    cleanUp Nothing numVirtuals = do
-      let (tok, toks) = replicateEndImplicitScope sp (Tok.Blanks t) numVirtuals
-      setPendingTokens toks
-      pure tok
-    -- if we have a pending level scope that would be closed by the upcoming
-    -- level tag, we must delay the emission of the indent token, so that after
-    -- we lex that token we can close all of the level scopes as appropriate,
-    -- emit the delayed indent token, then finally emit the level tag. we happen
-    -- to resolve a single level scope ahead of time here, just so that we are
-    -- guaranteed to have something to emit. this does slightly change where a
-    -- level tag name lexer error will occur in the token stream, but this
-    -- shouldn't really matter much in practice.
-    cleanUp (Just upcomingLevelDepth) numVirtuals = do
-      scopes <- gets parseStateScopeStack
-      case scopes of
-        scope : scopes'
-          | LevelScope m <- scopeType scope,
-            m >= upcomingLevelDepth -> do
-              let toks = replicate numVirtuals $ conVirtual sp
-              -- TODO: fix with gatherscopesdl!
-              setPendingTokens $ toks <> [Located sp (Tok.Blanks t)]
-              setScopeStack scopes'
-              pure $ conVirtual sp
-        _ -> do
-          let (tok, toks) = replicateEndImplicitScope sp (Tok.Blanks t) numVirtuals
-          setPendingTokens toks
-          pure tok
-    go upcomingLevelDepth tokLevel !numVirtuals ss@(scope : scopes) = do
-      lvl <- gets parseStateLayoutDepth
-      if lvl >= tokLevel
-        then case scopeType scope of
-          -- if we reach this point then this is the LayoutScope that defines
-          -- the current layout depth, and so we already know it ought to be
-          -- closed
-          LayoutScope _ ambientLevel -> do
-            setLayoutDepth ambientLevel
-            go upcomingLevelDepth tokLevel (numVirtuals + 1) scopes
-          LevelScope _ ->
-            go upcomingLevelDepth tokLevel (numVirtuals + 1) scopes
-          BraceScope -> throwLexError sp $ DeIndentInBracedGroup $ scopePos scope
-        else do
-          setScopeStack ss
-          cleanUp upcomingLevelDepth numVirtuals
-    go upcomingLevelDepth _ !numVirtuals [] = do
-      setScopeStack []
-      cleanUp upcomingLevelDepth numVirtuals
-
--- | Given a 'Token' and the 'SrcSpan' that it spans, create the indicated
--- number of virtual tokens at the start of the 'SrcSpan', returning the first
--- token to be emitted and a list of pending tokens.
-replicateEndImplicitScope :: SrcSpan -> Token -> Int -> (Located Token, [Located Token])
-replicateEndImplicitScope sp tok n
-  | n <= 0 = (locTok, [])
-  | otherwise = go 1 id
-  where
-    tokEnd = conVirtual sp
-    locTok = Located sp tok
-    go m acc
-      | m == n = (tokEnd, acc [locTok])
-      | otherwise = go (m + 1) (acc . (tokEnd :))
+  let willBeClosed
+        | T.null currInput = willBeClosedEOF
+        | otherwise = willBeClosedOther
+  toksDL <- gatherScopesDL willBeClosed $ pure ()
+  let (emitTok, pending) = unsafeNonEmptyDL $ toksDL . (Located sp (Tok.Blanks t) :)
+  setPendingTokens pending
+  pure emitTok
 
 -- | Resolve all pending scopes, throwing a lexer error if there are any pending
 -- braced group or attribute set scopes
@@ -399,16 +304,11 @@ doEOF = do
   inp <- gets parseStateInput
   let sp = alexInputSrcPos inp
   let srcSpan = SrcSpan (alexInputSrcName inp) sp sp
-  scopes <- gets parseStateScopeStack
-  numVirtuals <- getNumVirtuals srcSpan scopes
-  let (tok, toks) = replicateEndImplicitScope srcSpan Tok.TokenEOF numVirtuals
-  setPendingTokens toks
-  pure tok
-  where
-    getNumVirtuals x = getNumVirtuals' x 0
-    getNumVirtuals' :: SrcSpan -> Int -> [Scope] -> Parser Int
-    getNumVirtuals' endPos !nv (scope : scopes) = case scopeType scope of
-      LayoutScope _ _ -> getNumVirtuals' endPos (nv + 1) scopes
-      LevelScope _ -> getNumVirtuals' endPos (nv + 1) scopes
-      BraceScope -> throwLexError endPos $ UnmatchedStartBraceGroup (scopePos scope)
-    getNumVirtuals' _ !nv [] = pure nv
+  let willBeClosed scope = case scopeType scope of
+        LayoutScope _ _ -> pure $ ScopeContinue $ conVirtual srcSpan
+        LevelScope _ -> pure $ ScopeContinue $ conVirtual srcSpan
+        BraceScope -> throwLexError srcSpan $ UnmatchedStartBraceGroup (scopePos scope)
+  toksDL <- gatherScopesDL willBeClosed $ pure ()
+  let (emitTok, pending) = unsafeNonEmptyDL $ toksDL . (Located srcSpan Tok.TokenEOF :)
+  setPendingTokens pending
+  pure emitTok

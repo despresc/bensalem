@@ -110,7 +110,7 @@ fromIntermediateNodes = go mempty
     go !acc (SI.InlineComment _ :<| xs) = go acc xs
     go !acc (SI.ElementNode e :<| xs) = do
       attrs' <- convertAttrs $ SI.elementAttrs e
-      content' <- convertContent $ SI.elementArg e
+      content' <- convertContent (SI.elementPresentation e) $ SI.elementArg e
       let elt =
             Element
               (SI.elementTagPos e)
@@ -133,8 +133,8 @@ fromIntermediateNodes = go mempty
         attrs' <- convertAttrs $ SI.Attrs attrs
         pure $ Attr (locatedSpan locT) (locatedVal locT) $ AttrValSet attrs'
 
-    convertContent SI.NoArg = pure mempty
-    convertContent (SI.Arg x) = fromIntermediateNodes x
+    convertContent _ SI.NoArg = pure mempty
+    convertContent p (SI.Arg x) = handleContent p x
 
     isSpaceNode SI.LineEnd = True
     isSpaceNode (SI.LineSpace _) = True
@@ -148,7 +148,7 @@ fromIntermediateNodes = go mempty
     stripBeginBlank (SI.LineEnd :<| nodes) = nodes
     stripBeginBlank nodes = nodes
 
-    stripEndBlank (nodes :|> SI.LineEnd :|> SI.LineSpace n) = nodes
+    stripEndBlank (nodes :|> SI.LineEnd :|> SI.LineSpace _) = nodes
     stripEndBlank (nodes :|> SI.LineEnd) = nodes
     stripEndBlank nodes = nodes
 

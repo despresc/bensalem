@@ -18,9 +18,7 @@ fromList
    , elementName = "layout"
    , elementAttrs = fromList []
    , elementArg = fromList
-    [ LineEnd
-    , LineSpace 2
-    , ElementNode
+    [ ElementNode
      ( Element
       { elementTagPos = SrcSpan
        { srcSpanName = ""
@@ -39,10 +37,7 @@ fromList
       , elementName = "inner"
       , elementAttrs = fromList []
       , elementArg = fromList
-       [ LineEnd
-       , LineSpace 4
-       , PlainText "content"
-       ]
+       [ PlainText "content" ]
       }
      )
     , LineEnd

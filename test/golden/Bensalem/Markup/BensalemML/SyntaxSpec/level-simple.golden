@@ -18,11 +18,8 @@ fromList
    , elementName = "level"
    , elementAttrs = fromList []
    , elementArg = fromList
-    [ LineEnd
-    , LineEnd
-    , PlainText "content"
-    , LineEnd
-    ]
+    [ PlainText "content" ]
    }
   )
+ , LineEnd
  ]

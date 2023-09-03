@@ -18,9 +18,7 @@ fromList
    , elementName = "lvl1"
    , elementAttrs = fromList []
    , elementArg = fromList
-    [ LineEnd
-    , LineEnd
-    , ElementNode
+    [ ElementNode
      ( Element
       { elementTagPos = SrcSpan
        { srcSpanName = ""
@@ -38,10 +36,7 @@ fromList
       , elementArgPresentation = PresentLevel
       , elementName = "lvl2"
       , elementAttrs = fromList []
-      , elementArg = fromList
-       [ LineEnd
-       , LineEnd
-       ]
+      , elementArg = fromList []
       }
      )
     , ElementNode
@@ -62,10 +57,11 @@ fromList
       , elementArgPresentation = PresentLevel
       , elementName = "lvl3"
       , elementAttrs = fromList []
-      , elementArg = fromList [ LineEnd ]
+      , elementArg = fromList []
       }
      )
     ]
    }
   )
+ , LineEnd
  ]

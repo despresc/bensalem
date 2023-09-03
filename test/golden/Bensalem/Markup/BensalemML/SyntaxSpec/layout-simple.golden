@@ -18,9 +18,7 @@ fromList
    , elementName = "layout"
    , elementAttrs = fromList []
    , elementArg = fromList
-    [ LineEnd
-    , LineSpace 2
-    , PlainText "with"
+    [ PlainText "with"
     , LineSpace 1
     , PlainText "some"
     , LineSpace 1
