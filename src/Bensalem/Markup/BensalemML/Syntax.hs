@@ -14,6 +14,7 @@ module Bensalem.Markup.BensalemML.Syntax
   ( -- * Syntax types
     Node (..),
     Element (..),
+    SI.Presentation(..),
     AttrKey,
     AttrVal (..),
 
