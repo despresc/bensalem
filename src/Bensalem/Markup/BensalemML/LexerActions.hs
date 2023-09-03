@@ -84,6 +84,8 @@ data ScopePop a
 -- property that if @f@ never returns 'ScopeEnd' then the returned difference
 -- list will always be non-empty. It is also true that that returned difference
 -- list will be non-empty when given a non-empty input.
+--
+-- This function handles the scope start code restoration for you as well.
 
 -- TODO: anywhere this is used is not particularly elegant because we really
 -- want a (_ -> NonEmpty a) return value. guaranteeing that is a bit of a pain,

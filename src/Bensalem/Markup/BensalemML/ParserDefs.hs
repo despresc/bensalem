@@ -86,6 +86,16 @@ evalParser = go . evalStateT . unParser
   where
     go f = runExcept . f . initParseState
 
+-- | The parser state. Be very, very careful when modifying this manually, as
+-- lexing and parsing require the 'ParseState' to have particular properties at
+-- particular points in the source code to function properly. Most of the fields
+-- are self-explanatory, but it is important to note that if you modify the
+-- 'parseStateScopeStack' manually then you will probably need to modify the
+-- 'parseStateStartCode' as well, since the scopes keep track of the start code
+-- to be restored when they are resolved. You are encouraged to use the internal
+-- @gatherScopesDL@ function in "Bensalem.Markup.BensalemML.LexerActions" if you
+-- need to resolve some scopes on the stack, as this function handles start code
+-- restoration automatically for you.
 data ParseState = ParseState
   { -- | the current lexer code
     parseStateStartCode :: !Int,
@@ -93,12 +103,11 @@ data ParseState = ParseState
     parseStateInput :: !AlexInput,
     -- | any pending tokens to be emitted before further consumption of input
     parseStatePendingTokens :: ![Located Token],
-    -- | a possible pending 'Tok.Indent' token before an upcoming 'Tok.NumTag'
+    -- | the current layout depth - falling to at most this indent counts as a
+    --   deindent
     parseStateLayoutDepth :: !Int,
     -- | the current stack of scopes
-    parseStateScopeStack :: ![Scope],
-    -- | the location of the start of verbatim span, if we are in one
-    parseStateStartVerbatimLoc :: Maybe SrcSpan
+    parseStateScopeStack :: ![Scope]
   }
   deriving (Eq, Ord, Show)
 
@@ -109,8 +118,7 @@ initParseState ai =
       parseStateInput = ai,
       parseStatePendingTokens = [],
       parseStateLayoutDepth = 0,
-      parseStateScopeStack = [],
-      parseStateStartVerbatimLoc = Nothing
+      parseStateScopeStack = []
     }
 
 data Scope = Scope
