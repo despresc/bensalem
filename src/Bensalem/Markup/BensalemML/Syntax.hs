@@ -127,7 +127,8 @@ fromIntermediateNodes = go mempty
 
     convertAttr (locT, v) = case v of
       SI.BracedAttrVal nodes -> do
-        nodes' <- fromIntermediateNodes nodes
+        -- we handle braced attribute values just like braced arguments
+        nodes' <- convertBracedContent nodes
         pure $ Attr (locatedSpan locT) (locatedVal locT) $ AttrValMarkup nodes'
       SI.SetAttrVal attrs -> do
         attrs' <- convertAttrs $ SI.Attrs attrs
@@ -143,15 +144,25 @@ fromIntermediateNodes = go mempty
     stripBeginSpaces = Seq.dropWhileL isSpaceNode
     stripEndSpaces = Seq.dropWhileR isSpaceNode
 
-    -- drop a single blank line
+    -- from the front, drop a single blank line
     stripBeginBlank (SI.LineSpace _ :<| SI.LineEnd :<| nodes) = nodes
     stripBeginBlank (SI.LineEnd :<| nodes) = nodes
     stripBeginBlank nodes = nodes
 
+    -- from the front, drop all blank lines
+    stripBeginBlanks (SI.LineSpace _ :<| SI.LineEnd :<| nodes) = stripBeginBlanks nodes
+    stripBeginBlanks (SI.LineEnd :<| nodes) = stripBeginBlanks nodes
+    stripBeginBlanks nodes = nodes
+
+    -- from the end, drop a single blank line
     stripEndBlank (nodes :|> SI.LineEnd :|> SI.LineSpace _) = nodes
     stripEndBlank (nodes :|> SI.LineEnd) = nodes
     stripEndBlank nodes = nodes
 
-    handleContent PresentInline = fromIntermediateNodes . stripBeginBlank . stripEndBlank
-    handleContent PresentLayout = fromIntermediateNodes . stripBeginSpaces . stripEndBlank
+    handleContent PresentInline = convertBracedContent
+    -- TODO: I think this is a little too defensive - as a consequence of our
+    -- lexing strategy there never be any trailing blanks in a layout argument.
+    handleContent PresentLayout = fromIntermediateNodes . stripBeginBlanks . stripEndBlank
     handleContent PresentLevel = fromIntermediateNodes . stripBeginSpaces . stripEndSpaces
+
+    convertBracedContent = fromIntermediateNodes . stripBeginBlank . stripEndBlank

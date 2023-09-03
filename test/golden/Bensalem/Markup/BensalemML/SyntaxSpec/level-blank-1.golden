@@ -37,7 +37,9 @@ fromList
       , elementName = "layout"
       , elementAttrs = fromList []
       , elementArg = fromList
-       [ PlainText "lc" ]
+       [ LineSpace 4
+       , PlainText "lc"
+       ]
       }
      )
     ]
