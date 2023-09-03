@@ -14,7 +14,7 @@ module Bensalem.Markup.BensalemML.Syntax
   ( -- * Syntax types
     Node (..),
     Element (..),
-    SI.Presentation (..),
+    Presentation (..),
     AttrKey,
     AttrVal (..),
 
@@ -31,9 +31,11 @@ import Bensalem.Markup.BensalemML.ParserDefs
     evalParser,
     initAlexInput,
   )
+import Bensalem.Markup.BensalemML.Syntax.Intermediate (Presentation (..))
 import qualified Bensalem.Markup.BensalemML.Syntax.Intermediate as SI
 import Bensalem.Markup.BensalemML.Token (EltName)
 import Data.Sequence (Seq (..))
+import qualified Data.Sequence as Seq
 import Data.Text (Text)
 
 -- | Parse a sequence of bensalem nodes from the given input. These nodes are
@@ -133,3 +135,23 @@ fromIntermediateNodes = go mempty
 
     convertContent SI.NoArg = pure mempty
     convertContent (SI.Arg x) = fromIntermediateNodes x
+
+    isSpaceNode SI.LineEnd = True
+    isSpaceNode (SI.LineSpace _) = True
+    isSpaceNode _ = False
+
+    stripBeginSpaces = Seq.dropWhileL isSpaceNode
+    stripEndSpaces = Seq.dropWhileR isSpaceNode
+
+    -- drop a single blank line
+    stripBeginBlank (SI.LineSpace _ :<| SI.LineEnd :<| nodes) = nodes
+    stripBeginBlank (SI.LineEnd :<| nodes) = nodes
+    stripBeginBlank nodes = nodes
+
+    stripEndBlank (nodes :|> SI.LineEnd :|> SI.LineSpace n) = nodes
+    stripEndBlank (nodes :|> SI.LineEnd) = nodes
+    stripEndBlank nodes = nodes
+
+    handleContent PresentInline = fromIntermediateNodes . stripBeginBlank . stripEndBlank
+    handleContent PresentLayout = fromIntermediateNodes . stripBeginSpaces . stripEndBlank
+    handleContent PresentLevel = fromIntermediateNodes . stripBeginSpaces . stripEndSpaces

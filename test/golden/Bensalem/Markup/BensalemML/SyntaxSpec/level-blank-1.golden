@@ -1,0 +1,76 @@
+fromList
+ [ ElementNode
+  ( Element
+   { elementTagPos = SrcSpan
+    { srcSpanName = ""
+    , srcSpanStart = SrcPos
+     { srcOffset = 0
+     , srcLine = 1
+     , srcCol = 1
+     }
+    , srcSpanEnd = SrcPos
+     { srcOffset = 8
+     , srcLine = 1
+     , srcCol = 9
+     }
+    }
+   , elementArgPresentation = PresentLevel
+   , elementName = "levtag"
+   , elementAttrs = fromList []
+   , elementArg = fromList
+    [ LineEnd
+    , LineEnd
+    , LineSpace 2
+    , ElementNode
+     ( Element
+      { elementTagPos = SrcSpan
+       { srcSpanName = ""
+       , srcSpanStart = SrcPos
+        { srcOffset = 12
+        , srcLine = 3
+        , srcCol = 3
+        }
+       , srcSpanEnd = SrcPos
+        { srcOffset = 20
+        , srcLine = 3
+        , srcCol = 11
+        }
+       }
+      , elementArgPresentation = PresentLayout
+      , elementName = "layout"
+      , elementAttrs = fromList []
+      , elementArg = fromList
+       [ LineEnd
+       , LineSpace 4
+       , PlainText "lc"
+       ]
+      }
+     )
+    , LineEnd
+    , LineEnd
+    , LineSpace 1
+    ]
+   }
+  )
+ , ElementNode
+  ( Element
+   { elementTagPos = SrcSpan
+    { srcSpanName = ""
+    , srcSpanStart = SrcPos
+     { srcOffset = 30
+     , srcLine = 6
+     , srcCol = 2
+     }
+    , srcSpanEnd = SrcPos
+     { srcOffset = 39
+     , srcLine = 6
+     , srcCol = 11
+     }
+    }
+   , elementArgPresentation = PresentLevel
+   , elementName = "levtag2"
+   , elementAttrs = fromList []
+   , elementArg = fromList [ LineEnd ]
+   }
+  )
+ ]

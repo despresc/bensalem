@@ -22,7 +22,10 @@ spec =
       goldParse "layout-simple" "parses a simple layout element",
       goldParse "layout-nested" "parses layout element nested in another",
       goldParse "level-simple" "parses a simple level element",
-      goldParse "level-nested" "parses nested level elements"
+      goldParse "level-nested" "parses nested level elements",
+      goldParse
+        "level-blank-1"
+        "parses whitespace before level tag that closes a layout and level tag at once"
     ]
   where
     base = "test/golden/Bensalem/Markup/BensalemML/SyntaxSpec/"
