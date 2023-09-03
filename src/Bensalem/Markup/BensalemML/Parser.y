@@ -25,6 +25,7 @@ import Bensalem.Markup.BensalemML.Lexer (lexToken)
 import Data.Foldable (toList)
 import Control.Monad.Except (throwError)
 import Data.Text (Text)
+import Data.Sequence (Seq)
 }
 
 %expect 4 -- shift/reduce conflicts
@@ -106,22 +107,22 @@ LevelElement :: { Element }
   : levelTag OptionalAttrSet MixedContent endImplicitScope
       { element PresentLevel (getLevelTag $1) $2 (Just $3) }
 
-OptionalAttrSet :: { Maybe AttrsBuilder }
+OptionalAttrSet :: { Attrs }
 OptionalAttrSet
-  : {- empty -} { Nothing }
-  | AttrSet { Just $1 }
+  : {- empty -} { NoAttrs }
+  | AttrSet { Attrs $1 }
 
-AttrSet :: { AttrsBuilder }
+AttrSet :: { Seq Attr }
 AttrSet
   : startAttrSet Spaces Attrs endAttrSet { $3 }
 
 -- We sort out attribute validation later
-Attrs :: { AttrsBuilder }
+Attrs :: { Seq Attr }
 Attrs
-  : {- empty -} { id }
+  : {- empty -} { mempty }
   | Attrs1 { $1 }
 
-Attrs1 :: { AttrsBuilder }
+Attrs1 :: { Seq Attr }
 Attrs1
   : AttrEntry { singleAttr $1 }
   | Attrs1 Spaces AttrEntry { addAttr $1 $3 }

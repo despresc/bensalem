@@ -1,24 +1,25 @@
-[ ElementNode
- ( Element
-  { elementTagPos = SrcSpan
-   { srcSpanName = ""
-   , srcSpanStart = SrcPos
-    { srcOffset = 0
-    , srcLine = 1
-    , srcCol = 1
+fromList
+ [ ElementNode
+  ( Element
+   { elementTagPos = SrcSpan
+    { srcSpanName = ""
+    , srcSpanStart = SrcPos
+     { srcOffset = 0
+     , srcLine = 1
+     , srcCol = 1
+     }
+    , srcSpanEnd = SrcPos
+     { srcOffset = 7
+     , srcLine = 1
+     , srcCol = 8
+     }
     }
-   , srcSpanEnd = SrcPos
-    { srcOffset = 7
-    , srcLine = 1
-    , srcCol = 8
-    }
+   , elementArgPresentation = PresentInline
+   , elementName = "inline"
+   , elementAttrs = fromList []
+   , elementArg = fromList
+    [ PlainText "{}thing" ]
    }
-  , elementArgPresentation = PresentInline
-  , elementName = "inline"
-  , elementAttrs = []
-  , elementArg =
-   [ PlainText "{}thing" ]
-  }
- )
-, LineEnd
-]
+  )
+ , LineEnd
+ ]

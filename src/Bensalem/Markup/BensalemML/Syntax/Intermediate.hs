@@ -13,14 +13,14 @@ module Bensalem.Markup.BensalemML.Syntax.Intermediate
   ( -- * Intermediate syntax types
     Node (..),
     Element (..),
+    Arg (..),
     Presentation (..),
-    AttrMap (..),
+    Attrs (..),
     AttrKey,
     AttrVal (..),
 
     -- * Intermediate syntax builders
     NodeSequence (..),
-    AttrsBuilder,
     Attr,
     text,
     lineSpace,
@@ -40,7 +40,6 @@ import Bensalem.Markup.BensalemML.ParserDefs
     SrcSpan (..),
   )
 import Bensalem.Markup.BensalemML.Token (EltName)
-import Data.Map.Strict (Map)
 import Data.Sequence (Seq (..))
 import qualified Data.Sequence as Seq
 import Data.Text (Text)
@@ -67,9 +66,15 @@ data Element = Element
   { elementTagPos :: !SrcSpan,
     elementPresentation :: !Presentation,
     elementName :: !EltName,
-    elementAttrs :: !(Maybe [Attr]),
-    elementArg :: !(Maybe (Seq Node))
+    elementAttrs :: !Attrs,
+    elementArg :: !Arg
   }
+  deriving (Eq, Ord, Show)
+
+data Attrs = NoAttrs | Attrs !(Seq Attr)
+  deriving (Eq, Ord, Show)
+
+data Arg = NoArg | Arg !(Seq Node)
   deriving (Eq, Ord, Show)
 
 -- | A raw attribute
@@ -77,7 +82,7 @@ type Attr = (Located Text, AttrVal)
 
 data AttrVal
   = BracedAttrVal !(Seq Node)
-  | SetAttrVal ![Attr]
+  | SetAttrVal !(Seq Attr)
   deriving (Eq, Ord, Show)
 
 data Presentation = PresentInline | PresentLayout | PresentLevel
@@ -91,18 +96,6 @@ data ScopeContent
     LayoutScopeContent !(Seq Node)
   | -- | level elements contain everything in their level scope
     LevelScopeContent !(Seq Node)
-  deriving (Eq, Ord, Show)
-
--- | An attribute map that also stores the positions of the /keys/ of the map
-
--- n.b. this representation may have to change if we allow attribtues like
--- [x.y.z=something]. we could always just have the SrcSpan of the entire
--- sequence stored in every intermediate, I suppose, but we'd have to be careful
--- when reporting errors and such that we recognize that that may happen and not
--- duplicate information.
-newtype AttrMap = AttrMap
-  { unAttrMap :: Map AttrKey (Located AttrVal)
-  }
   deriving (Eq, Ord, Show)
 
 -- | An attribute key is a non-empty string of alphanumeric characters. This
@@ -134,8 +127,6 @@ instance Semigroup NodeSequence where
 
 instance Monoid NodeSequence where
   mempty = NodeSequence mempty
-
-type AttrsBuilder = [Attr] -> [Attr]
 
 -- | Unsafely construct a 'MixedContent' sequence from 'Text'. This function
 -- does not check that the 'Text' is free of syntactically-significant
@@ -173,21 +164,20 @@ inlineComment (Located _ t) = singleNode $ InlineComment t
 elementNode :: Element -> NodeSequence
 elementNode = singleNode . ElementNode
 
-element :: Presentation -> Located EltName -> Maybe AttrsBuilder -> Maybe NodeSequence -> Element
+element :: Presentation -> Located EltName -> Attrs -> Maybe NodeSequence -> Element
 element pres elname attrs content =
-  Element (locatedSpan elname) pres (locatedVal elname) attrs' content'
+  Element (locatedSpan elname) pres (locatedVal elname) attrs content'
   where
-    attrs' = attrs <*> pure []
-    content' = unNodeSequence <$> content
+    content' = maybe NoArg (Arg . unNodeSequence) content
 
-singleAttr :: Attr -> AttrsBuilder
-singleAttr = (:)
+singleAttr :: Attr -> Seq Attr
+singleAttr = Seq.singleton
 
-addAttr :: AttrsBuilder -> Attr -> AttrsBuilder
-addAttr x y = x . (y :)
+addAttr :: Seq Attr -> Attr -> Seq Attr
+addAttr = (:|>)
 
 bracedAttrVal :: NodeSequence -> AttrVal
 bracedAttrVal = BracedAttrVal . unNodeSequence
 
-setAttrVal :: AttrsBuilder -> AttrVal
-setAttrVal = SetAttrVal . ($ [])
+setAttrVal :: Seq Attr -> AttrVal
+setAttrVal = SetAttrVal

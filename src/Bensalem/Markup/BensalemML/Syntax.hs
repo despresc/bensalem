@@ -1,3 +1,5 @@
+{-# LANGUAGE BangPatterns #-}
+
 -- |
 -- Description : Bensalem document syntax
 -- Copyright   : 2021 Christian Despres
@@ -30,8 +32,8 @@ import Bensalem.Markup.BensalemML.ParserDefs
   )
 import qualified Bensalem.Markup.BensalemML.Syntax.Intermediate as SI
 import Bensalem.Markup.BensalemML.Token (EltName)
-import Data.Foldable (toList)
-import Data.Maybe (fromMaybe)
+import Data.Sequence (Seq (..))
+import qualified Data.Sequence as Seq
 import Data.Text (Text)
 
 -- | Parse a sequence of bensalem nodes from the given input. These nodes are
@@ -44,10 +46,10 @@ parseNodesTW ::
   Text ->
   -- | input
   Text ->
-  Either ParseError [Node]
+  Either ParseError (Seq Node)
 parseNodesTW tw nm inp = do
   nodes <- evalParser SP.parseNodes $ initAlexInput tw nm inp
-  fromIntermediateNodes nodes
+  fromIntermediateNodes $ Seq.fromList nodes
 
 -- | Parse a sequence of bensalem nodes from the given input with
 -- 'parseNodesTW', with a default tab width of 8
@@ -56,7 +58,7 @@ parseNodes ::
   Text ->
   -- | input
   Text ->
-  Either ParseError [Node]
+  Either ParseError (Seq Node)
 parseNodes = parseNodesTW 8
 
 -- | A single node in bensalem syntax
@@ -79,14 +81,14 @@ data Element = Element
   { elementTagPos :: !SrcSpan,
     elementArgPresentation :: !SI.Presentation,
     elementName :: !EltName,
-    elementAttrs :: [Attr],
-    elementArg :: [Node]
+    elementAttrs :: !(Seq Attr),
+    elementArg :: !(Seq Node)
   }
   deriving (Eq, Ord, Show)
 
 data ElementArg = ElementArg
   { elementArgTy :: ElementArgTy,
-    elementArgContent :: [Node]
+    elementArgContent :: Seq Node
   }
   deriving (Eq, Ord, Show)
 
@@ -104,130 +106,42 @@ type AttrKey = Text
 
 -- | An attribute value
 data AttrVal
-  = AttrValMarkup [Node]
-  | AttrValSet [Attr]
+  = AttrValMarkup !(Seq Node)
+  | AttrValSet !(Seq Attr)
   deriving (Eq, Ord, Show)
 
 -- TODO: need to add in the checking and the indentation stripping!
-fromIntermediateNodes :: [SI.Node] -> Either ParseError [Node]
-fromIntermediateNodes = go id
+fromIntermediateNodes :: Seq SI.Node -> Either ParseError (Seq Node)
+fromIntermediateNodes = go mempty
   where
-    go acc (SI.PlainText t : xs) = go (acc . (PlainText t :)) xs
-    go acc (SI.LineSpace n : xs) = go (acc . (LineSpace n :)) xs
-    go acc (SI.LineEnd : xs) = go (acc . (LineEnd :)) xs
-    go acc (SI.InlineComment _ : xs) = go acc xs
-    go acc (SI.ElementNode e : xs) = do
-      let content = SI.elementArg e
-      attrs' <- traverse convertAttrs $ SI.elementAttrs e
-      content' <- traverse (fromIntermediateNodes . toList) content
+    go !acc (SI.PlainText t :<| xs) = go (acc :|> PlainText t) xs
+    go !acc (SI.LineSpace n :<| xs) = go (acc :|> LineSpace n) xs
+    go !acc (SI.LineEnd :<| xs) = go (acc :|> LineEnd) xs
+    go !acc (SI.InlineComment _ :<| xs) = go acc xs
+    go !acc (SI.ElementNode e :<| xs) = do
+      attrs' <- convertAttrs $ SI.elementAttrs e
+      content' <- convertContent $ SI.elementArg e
       let elt =
             Element
               (SI.elementTagPos e)
               (SI.elementPresentation e)
               (SI.elementName e)
-              (fromMaybe [] attrs')
-              (toList $ fromMaybe mempty content')
-      go (acc . (ElementNode elt :)) xs
-    go acc [] = pure $ acc []
+              attrs'
+              content'
+      go (acc :|> ElementNode elt) xs
+    go !acc Empty = pure acc
 
-    convertAttrs :: [SI.Attr] -> Either ParseError [Attr]
-    convertAttrs = traverse convertAttr
+    convertAttrs :: SI.Attrs -> Either ParseError (Seq Attr)
+    convertAttrs SI.NoAttrs = pure mempty
+    convertAttrs (SI.Attrs x) = traverse convertAttr x
 
     convertAttr (locT, v) = case v of
       SI.BracedAttrVal nodes -> do
-        nodes' <- fromIntermediateNodes $ toList nodes
+        nodes' <- fromIntermediateNodes nodes
         pure $ Attr (locatedSpan locT) (locatedVal locT) $ AttrValMarkup nodes'
       SI.SetAttrVal attrs -> do
-        attrs' <- convertAttrs attrs
+        attrs' <- convertAttrs $ SI.Attrs attrs
         pure $ Attr (locatedSpan locT) (locatedVal locT) $ AttrValSet attrs'
 
-{-
--- | Convert a sequence of intermediate nodes to full syntax nodes, possibly
--- failing if there are incorrectly positioned braced groups or attribute sets.
--- This function assumes that indentation and /trailing/ content white space has
--- been stripped as necessary, but does not assume that initial content white
--- space has been stripped.
---
--- The syntax may be relaxed in future to allow for braced groups and attribute
--- sets to appear apart from elements, in which case this function will no
--- longer fail.
-fromIntermediateNodes :: [SI.Node] -> Either ParseError [Node]
-fromIntermediateNodes = go id
-  where
-    go acc (SI.PlainText t : xs) = go (acc . (PlainText t :)) xs
-    go acc (SI.LineSpace n : xs) = go (acc . (LineSpace n :)) xs
-    go acc (SI.LineEnd : xs) = go (acc . (LineEnd :)) xs
-    go acc (SI.InlineComment _ : xs) = go acc xs
-    go acc (SI.ElementNode e : xs) =
-      let con = Element (SI.elementTagPos e) (SI.elementName e)
-       in case SI.elementScopeContent e of
-            SI.InlineScopeContent -> do
-              (elt, xs') <- handleInlineElement con xs
-              go (acc . (elt :)) xs'
-            SI.LayoutScopeContent content -> do
-              elt <- handleLayoutElement con (toList content)
-              go (acc . (elt :)) xs
-            SI.LevelScopeContent content -> do
-              elt <- handleLevelElement con (toList content)
-              go (acc . (elt :)) xs
-    go _ (SI.BracedGroup _ _ : _) = Left $ ParserError Nothing
-    go _ (SI.LayoutBracedGroup _ _ : _) = Left $ ParserError Nothing
-    go _ (SI.AttrMapNode _ _ : _) = Left $ ParserError Nothing
-    go acc [] = pure $ acc []
-
-    fromAttrMap (SI.AttrMap m) = AttrMap <$> traverse fromAttrVal m
-
-    fromAttrVal (Located sp (SI.AttrValMarkup n)) = do
-      n' <- fromIntermediateNodes n
-      pure $ Located sp $ AttrValMarkup n'
-    fromAttrVal (Located sp (SI.AttrValMap m)) = do
-      m' <- fromAttrMap m
-      pure $ Located sp $ AttrValMap m'
-
-    gatherWhiteSpace acc (SI.LineSpace n : xs) = gatherWhiteSpace (acc . (LineSpace n :)) xs
-    gatherWhiteSpace acc (SI.LineEnd : xs) = gatherWhiteSpace (acc . (LineEnd :)) xs
-    gatherWhiteSpace acc xs = (acc, xs)
-
-    resolveElement con xs = case gatherWhiteSpace id xs of
-      (_, SI.AttrMapNode sp am : xs') -> do
-        am' <- fromAttrMap am
-        resolveArgs (con $ Just $ Located sp am') xs'
-      (_, SI.BracedGroup sp n : xs') -> do
-        n' <- fromIntermediateNodes n
-        resolveArgs (con Nothing . (ElementArg (ElementArgBraced sp) n' :)) xs'
-      (_, SI.LayoutBracedGroup sp n : xs') -> do
-        n' <- fromIntermediateNodes n
-        resolveArgs (con Nothing . (ElementArg (ElementArgLayout sp) n' :)) xs'
-      _ -> pure (con Nothing, xs)
-
-    resolveArgs con xs = case gatherWhiteSpace id xs of
-      (_, SI.BracedGroup sp n : xs') -> do
-        n' <- fromIntermediateNodes n
-        resolveArgs (con . (ElementArg (ElementArgBraced sp) n' :)) xs'
-      (_, SI.LayoutBracedGroup sp n : xs') -> do
-        n' <- fromIntermediateNodes n
-        resolveArgs (con . (ElementArg (ElementArgLayout sp) n' :)) xs'
-      _ -> pure (con, xs)
-
-    handleInlineElement con stream = do
-      (elt, stream') <- resolveElement con stream
-      pure (ElementNode $ elt [], stream')
-    handleLayoutElement con content = do
-      (elt, content') <- resolveElement con content
-      let content'' = stripLayoutBegin content'
-      contentN <- fromIntermediateNodes content''
-      pure $ ElementNode $ elt [ElementArg ElementArgBody contentN]
-    handleLevelElement con content = do
-      (elt, content') <- resolveElement con content
-      let content'' = stripLevelBegin content'
-      contentN <- fromIntermediateNodes content''
-      pure $ ElementNode $ elt [ElementArg ElementArgBody contentN]
-
-    stripLayoutBegin (SI.LineSpace _ : x) = stripLayoutBegin x
-    stripLayoutBegin (SI.LineEnd : x) = x
-    stripLayoutBegin x = x
-
-    stripLevelBegin (SI.LineSpace _ : x) = stripLevelBegin x
-    stripLevelBegin (SI.LineEnd : x) = stripLevelBegin x
-    stripLevelBegin x = x
--}
+    convertContent SI.NoArg = pure mempty
+    convertContent (SI.Arg x) = fromIntermediateNodes x

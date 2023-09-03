@@ -1,43 +1,46 @@
-[ ElementNode
- ( Element
-  { elementTagPos = SrcSpan
-   { srcSpanName = ""
-   , srcSpanStart = SrcPos
-    { srcOffset = 0
-    , srcLine = 1
-    , srcCol = 1
-    }
-   , srcSpanEnd = SrcPos
-    { srcOffset = 7
-    , srcLine = 1
-    , srcCol = 8
-    }
-   }
-  , elementArgPresentation = PresentInline
-  , elementName = "inline"
-  , elementAttrs =
-   [ Attr
-    ( SrcSpan
-     { srcSpanName = ""
-     , srcSpanStart = SrcPos
-      { srcOffset = 8
-      , srcLine = 1
-      , srcCol = 9
-      }
-     , srcSpanEnd = SrcPos
-      { srcOffset = 13
-      , srcLine = 1
-      , srcCol = 14
-      }
+fromList
+ [ ElementNode
+  ( Element
+   { elementTagPos = SrcSpan
+    { srcSpanName = ""
+    , srcSpanStart = SrcPos
+     { srcOffset = 0
+     , srcLine = 1
+     , srcCol = 1
      }
-    ) "attr1"
-    ( AttrValMarkup
-     [ PlainText "thing" ]
-    )
-   ]
-  , elementArg =
-   [ PlainText "argument" ]
-  }
- )
-, LineEnd
-]
+    , srcSpanEnd = SrcPos
+     { srcOffset = 7
+     , srcLine = 1
+     , srcCol = 8
+     }
+    }
+   , elementArgPresentation = PresentInline
+   , elementName = "inline"
+   , elementAttrs = fromList
+    [ Attr
+     ( SrcSpan
+      { srcSpanName = ""
+      , srcSpanStart = SrcPos
+       { srcOffset = 8
+       , srcLine = 1
+       , srcCol = 9
+       }
+      , srcSpanEnd = SrcPos
+       { srcOffset = 13
+       , srcLine = 1
+       , srcCol = 14
+       }
+      }
+     ) "attr1"
+     ( AttrValMarkup
+      ( fromList
+       [ PlainText "thing" ]
+      )
+     )
+    ]
+   , elementArg = fromList
+    [ PlainText "argument" ]
+   }
+  )
+ , LineEnd
+ ]
