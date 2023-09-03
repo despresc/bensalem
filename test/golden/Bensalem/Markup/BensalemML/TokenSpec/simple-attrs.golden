@@ -1,0 +1,24 @@
+(0,1,1)(7,1,8) InlineTag "inline"
+(7,1,8)(8,1,9) StartAttrSet
+(8,1,9)(9,1,10) AttrKey "x"
+(9,1,10)(10,1,11) Equals
+(10,1,11)(11,1,12) StartAttrSet
+(11,1,12)(12,1,13) AttrKey "y"
+(12,1,13)(13,1,14) Equals
+(13,1,14)(14,1,15) StartBraceGroup
+(14,1,15)(15,1,16) PlainText "z"
+(15,1,16)(16,1,17) EndBraceGroup
+(16,1,17)(17,1,18) EndAttrSet
+(18,1,19)(19,1,20) AttrKey "w"
+(19,1,20)(20,1,21) Equals
+(20,1,21)(21,1,22) StartBraceGroup
+(21,1,22)(22,1,23) PlainText "a"
+(22,1,23)(23,1,24) EndBraceGroup
+(23,1,24)(24,2,1) Blanks "\n"
+(24,2,1)(25,2,2) AttrKey "l"
+(25,2,2)(26,2,3) Equals
+(26,2,3)(27,2,4) StartBraceGroup
+(27,2,4)(28,2,5) PlainText "r"
+(28,2,5)(29,2,6) EndBraceGroup
+(29,2,6)(30,2,7) EndAttrSet
+(30,2,7)(31,3,1) Blanks "\n"

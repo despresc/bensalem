@@ -28,13 +28,12 @@ import Data.Text (Text)
 import Data.Sequence (Seq)
 }
 
-%expect 4 -- shift/reduce conflicts
+%expect 1 -- shift/reduce conflicts
 {- A note on the shift/reduce conflicts
 
-The 4 conflicts here are all due to ambiguities related to tags, namely that '{'
-(for inlines) and '[' (for all three) immediately after a tag could be parsed
-either as the start of an argument or attribute set, or as insignificant text.
-The shift (which happy chooses) represents the former and is correct.
+The 1 conflict here is due to the fact that '{' immediately after a tag could be
+parsed either as the start of an argument, or as insignificant text. The shift
+(which happy chooses) represents the former and is correct.
 
 -}
 
@@ -58,6 +57,7 @@ The shift (which happy chooses) represents the former and is correct.
   endBrace { Located _ Tok.EndBraceGroup }
   startAttrSet { Located _ Tok.StartAttrSet }
   endAttrSet { Located _ Tok.EndAttrSet }
+  attrKey { Located _ (Tok.AttrKey _) }
   endImplicitScope { Located _ Tok.EndImplicitScope }
 
 %%
@@ -65,9 +65,9 @@ The shift (which happy chooses) represents the former and is correct.
 -- a top-level node
 MixedContentNode :: { NodeSequence }
   : text { text (locatedVal $ getPlainText $1) }
-  | equals { text "=" }
-  | startAttrSet { text "[" }
-  | endAttrSet { text "]" }
+--  | equals { text "=" }
+--  | startAttrSet { text "[" }
+--  | endAttrSet { text "]" }
   | literalAt { text "@" }
   | lineSpace { lineSpace (getLineSpace $1) }
   | blanks { blanks (getBlanks $1) }
@@ -133,7 +133,7 @@ AttrEntry
 
 AttrKey :: { Located Text }
 AttrKey
-  : text { getPlainText $1 }
+  : attrKey { getAttrKey $1 }
 
 AttrVal :: { AttrVal }
 AttrVal
@@ -204,4 +204,9 @@ getLevelTag _ = error "Internal error"
 getLayoutTag :: Located Tok.Token -> Located Text
 getLayoutTag (Located x (Tok.LayoutTag t)) = Located x t
 getLayoutTag _ = error "Internal error"
+
+-- | Partial function that matches an attribute key
+getAttrKey :: Located Tok.Token -> Located Text
+getAttrKey (Located x (Tok.AttrKey k)) = Located x k
+getAttrKey _ = error "Internal error"
 }

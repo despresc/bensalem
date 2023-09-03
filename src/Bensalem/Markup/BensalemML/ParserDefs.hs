@@ -115,6 +115,8 @@ initParseState ai =
 
 data Scope = Scope
   { scopeType :: !ScopeType,
+    -- | the start code that needs to be restored upon scope exit
+    scopeAmbientStartCode :: !Int,
     -- | the span of the token that started the scope
     scopePos :: !SrcSpan
   }
@@ -122,6 +124,7 @@ data Scope = Scope
 
 data ScopeType
   = BraceScope
+  | AttrSetScope
   | -- | the depth it defines, the ambient depth
     LayoutScope !Int !Int
   | LevelScope !Int
@@ -152,14 +155,31 @@ data LexError
   | -- | a start of brace group was not matched by an end of brace group (span
     -- of start of brace group)
     UnmatchedStartBraceGroup SrcSpan
+  | -- | a start of brace group was not matched by an end of brace group (span
+    -- of start of brace group)
+    UnmatchedStartAttrSet SrcSpan
   | -- | an end of brace group was encountered with no matching start of brace
     -- | group
     UnmatchedEndBraceGroup
+  | -- | an end of brace group was encountered with no matching start of brace
+    -- | group
+    UnmatchedEndAttrSet
   | -- | a start of attribute set was ended by an end of braced group (span of
     -- start of attribute set)
     AttrBraceMismatch SrcSpan
+  | -- | a start of braced group attribute set was ended by an end of attribute
+    -- set (span of start of braced group)
+    BraceAttrMismatch SrcSpan
+  | -- | a layout scope was ended by an end of attribute set (span of layout
+    -- tag)
+    LayoutAttrMismatch SrcSpan
+  | -- | a start of braced group attribute set was ended by an end of attribute
+    -- set (span of layout tag)
+    LevelAttrMismatch SrcSpan
   | -- | a de-indent occurred in a braced group (span of start of braced group)
     DeIndentInBracedGroup SrcSpan
+  | -- | a de-indent occurred in attribute set (span of start of attribute set)
+    DeIndentInAttrSet SrcSpan
   deriving (Eq, Ord, Show)
 
 -- | A position in a 'Char' stream. The 'srcOffset' is the index of the position

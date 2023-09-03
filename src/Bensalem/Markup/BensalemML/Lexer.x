@@ -13,12 +13,15 @@ import Bensalem.Markup.BensalemML.Token
 import qualified Data.Text as T
 }
 
-$specialChar = [ \[ \] \{ \} = \ \n @ ]
-$plainText = $printable # $specialChar
-$whitespace = [\  \n]
+$plainPlainText = $printable # [ \{ \} \  \n @ ]
+$afterTagPlainText = $printable # [ \[ \] \{ \} = \ \n @ ]
 
 $identish = $printable # [ \[ \] \{ \} \  \n ]
 $inlineStarter = $identish # [@ \; \# &]
+
+$attrKeyish = $printable # [ \[ \] \{ \} \  \n = ]
+-- happens to be the same for now
+$attrKeyStarter = $attrKeyish
 
 @blanks = (\n | \ )*
 @indent = \n @blanks
@@ -28,42 +31,65 @@ tokens :-
 <0> {
   -- we are a little strict here. if there is no white space we recover in
   -- lexToken.
-  (\n | \ )+ { textTok Blanks `thenCode` plainTextBeginLine}
+  (\n | \ )+ { textTok Blanks `thenCode` plainText }
 }
 
-<plainTextBeginLine> {
-  $plainText+ { textTok PlainText `thenCode` plainTextMidLine }
-
-  "{" { doStartBraceGroup `thenCode` plainTextMidLine }
-  "}" { doEndBraceGroup `thenCode` plainTextMidLine }
-  "[" { plainTok StartAttrSet `thenCode` plainTextMidLine }
-  "]" { plainTok EndAttrSet `thenCode` plainTextMidLine }
-  "=" { plainTok Equals `thenCode` plainTextMidLine }
-
-  "@@" { plainTok LiteralAt `thenCode` plainTextMidLine }
-  "@;;" .* { doLineComment `thenCode` plainTextMidLine }
-  "@&" $identish+ { doLayoutTag `thenCode` plainTextMidLine }
-  "@" $inlineStarter $identish* { doInlineTag `thenCode` plainTextMidLine }
-  "@" "#"+ $identish+ { doLevelTag `thenCode` plainTextMidLine }
-}
-
-<plainTextMidLine> {
-  $plainText+ { textTok PlainText }
-
+<plainText> {
+  $plainPlainText+ { textTok PlainText }
   \ + { \toklen spn _ -> pure $ Located spn $ LineSpace toklen }
-  @indent { doBlanks `thenCode` plainTextBeginLine }
+  @indent { doBlanks }
 
-  "{" { doStartBraceGroup }
+  "{" { doStartBraceGroup plainText }
   "}" { doEndBraceGroup }
-  "[" { plainTok StartAttrSet }
-  "]" { plainTok EndAttrSet }
-  "=" { plainTok Equals }
 
-  "@@" { plainTok LiteralAt `thenCode` plainTextMidLine }
+  "@@" { plainTok LiteralAt }
   "@;;" .* { doLineComment }
-  "@&" $identish+ { doLayoutTag `thenCode` plainTextMidLine }
-  "@" "#"+ $identish+ { doLevelTag `thenCode` plainTextMidLine }
-  "@" $inlineStarter $identish* { doInlineTag `thenCode` plainTextMidLine }
+
+  "@" $inlineStarter $identish* { doInlineTag `thenCode` afterTag }
+  "@&" $identish+ { doLayoutTag plainText `thenCode` afterTag }
+  "@" "#"+ $identish+ { doLevelTag plainText `thenCode` afterTag }
+}
+
+-- sadly repetitive - I could probably do some kind of recovery trick in
+-- lexToken, but I'd rather not right now
+
+<afterTag> {
+  "[" { doStartAttrSet plainText `thenCode` attrSet }
+
+  $afterTagPlainText+ { textTok PlainText `thenCode` plainText }
+  \ + { (\toklen spn _ -> pure $ Located spn $ LineSpace toklen) `thenCode` plainText }
+  @indent { doBlanks `thenCode` plainText }
+  "{" { doStartBraceGroup plainText `thenCode` plainText }
+  "}" { doEndBraceGroup `thenCode` plainText }
+
+  "@@" { plainTok LiteralAt `thenCode` plainText }
+  "@;;" .* { doLineComment `thenCode` plainText }
+
+  "@" $inlineStarter $identish* { doInlineTag `thenCode` afterTag }
+  "@&" $identish+ { doLayoutTag plainText `thenCode` afterTag }
+  "@" "#"+ $identish+ { doLevelTag plainText `thenCode` afterTag }
+}
+
+-- observe that we don't need to lex '}' here, as that's implicitly handled by
+-- plainTextMidLine - when we get to the end brace we simply restore the correct
+-- start code
+
+-- we also use doBlanks, which has the effect of created some space inside the
+-- attr set that needs to be stripped out by the parser. the issue is that we
+-- can't simply skip line endings, because we need to enforce a lack of
+-- deindents inside attribute sets, and I don't think alex allows a "monadic
+-- skip", meaning we'd have to hack one together ourselves. happily, we can at
+-- least skip line space.
+
+<attrSet> {
+  -- TODO: should really add some checking here!
+  $attrKeyStarter $attrKeyish* { textTok AttrKey }
+  "=" { plainTok Equals }
+  "{" { doStartBraceGroup attrSet `thenCode` plainText }
+  "[" { doStartAttrSet attrSet }
+  "]" { doEndAttrSet }
+  \ + ;
+  @indent { doBlanks }
 }
 
 {
@@ -77,7 +103,7 @@ lexToken = do
             AlexEOF -> doEOF
             AlexError ai
               | sc == 0 -> do
-                  put $ parsestate {parseStateStartCode = plainTextBeginLine}
+                  put $ parsestate {parseStateStartCode = plainText }
                   lexToken
               | otherwise -> do
                   let nm = alexInputSrcName ai

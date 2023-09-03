@@ -41,6 +41,8 @@ data Token
     EndAttrSet
   | -- | @=@
     Equals
+  | -- | a potential attribute key
+    AttrKey !Text
   | -- | virtual token (zero-width, not appearing explicitly in the source)
     -- denoting the end of content for a level or layout element
     EndImplicitScope
@@ -64,6 +66,7 @@ renderToken EndBraceGroup = "}"
 renderToken StartAttrSet = "["
 renderToken EndAttrSet = "]"
 renderToken Equals = "="
+renderToken (AttrKey k) = k
 renderToken EndImplicitScope = ""
 renderToken TokenEOF = ""
 

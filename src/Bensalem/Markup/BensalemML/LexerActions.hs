@@ -9,6 +9,7 @@
 module Bensalem.Markup.BensalemML.LexerActions
   ( AlexAction,
     thenCode,
+    setCode,
     textTok,
     plainTok,
     doInlineTag,
@@ -16,6 +17,8 @@ module Bensalem.Markup.BensalemML.LexerActions
     doLevelTag,
     doStartBraceGroup,
     doEndBraceGroup,
+    doStartAttrSet,
+    doEndAttrSet,
     doBlanks,
     doLineComment,
     doEOF,
@@ -104,8 +107,12 @@ gatherScopesDL f globalScopeAct = do
     go acc (s : ss) = do
       pa <- f s
       case pa of
-        ScopeContinue a -> go (acc . (a :)) ss
-        ScopeStop a -> pure (acc . (a :), ss)
+        ScopeContinue a -> do
+          setCode $ scopeAmbientStartCode s
+          go (acc . (a :)) ss
+        ScopeStop a -> do
+          setCode $ scopeAmbientStartCode s
+          pure (acc . (a :), ss)
         ScopeEnd -> pure (acc, s : ss)
     go acc [] = globalScopeAct $> (acc, [])
 
@@ -125,10 +132,16 @@ unsafeNonEmptyDL l = case l [] of
 -- given 'Int', using the passed 'Text' and 'SrcPos' for the location of the
 -- emitted virtual tokens. Also takes in the level token itself and returns the
 -- appropriate token to be emitted immediately by the lexer.
-resolveLevelScopes :: SrcSpan -> Int -> Token -> Parser (Located Token)
-resolveLevelScopes spn n tok = do
+resolveLevelScopes ::
+  -- | the start code to be restored
+  Int ->
+  SrcSpan ->
+  Int ->
+  Token ->
+  Parser (Located Token)
+resolveLevelScopes restoreCode spn n tok = do
   toksDL <- gatherScopesDL willBeClosed (pure ())
-  pushScope $ Scope (LevelScope n) spn
+  pushScope $ Scope (LevelScope n) restoreCode spn
   let (emitTok, pending) = unsafeNonEmptyDL $ toksDL . (Located spn tok :)
   setPendingTokens pending
   pure emitTok
@@ -148,10 +161,13 @@ doLineComment _ sp t = pure $ Located sp $ Tok.LineComment t'
 
 -- | Handle a level element tag. Level elements close the scope of all level
 -- elements with depth greater than or equal to that level element.
-doLevelTag :: AlexAction
-doLevelTag _ sp t =
+doLevelTag ::
+  -- | the start code to be restored on exit
+  Int ->
+  AlexAction
+doLevelTag restoreCode _ sp t =
   case Tok.validEltName tagt of
-    Just eltname -> resolveLevelScopes sp level $ Tok.LevelTag level eltname
+    Just eltname -> resolveLevelScopes restoreCode sp level $ Tok.LevelTag level eltname
     Nothing -> throwLexError errSp $ InvalidEltName tagt
   where
     -- drop the initial @
@@ -165,9 +181,12 @@ doLevelTag _ sp t =
 
 -- | Handle the start of a braced group. The start of a braced group opens a
 -- braced group scope.
-doStartBraceGroup :: AlexAction
-doStartBraceGroup _ sp _ = do
-  pushScope $ Scope BraceScope sp
+doStartBraceGroup ::
+  -- | the start code to be restored on exit
+  Int ->
+  AlexAction
+doStartBraceGroup restoreCode _ sp _ = do
+  pushScope $ Scope BraceScope restoreCode sp
   pure $ Located sp Tok.StartBraceGroup
 
 -- | Handle the end of a braced group. The end of a braced group resolves all
@@ -186,19 +205,62 @@ doEndBraceGroup _ sp _ = do
     tokBrace = Located sp Tok.EndBraceGroup
     willBeClosed scope = case scopeType scope of
       BraceScope -> pure $ ScopeStop tokBrace
+      AttrSetScope -> throwLexError sp $ AttrBraceMismatch $ scopePos scope
       LayoutScope _ ambient -> do
         setLayoutDepth ambient
         pure $ ScopeContinue tokEnd
       LevelScope _ -> pure $ ScopeContinue tokEnd
     globalAct = throwLexError sp UnmatchedEndBraceGroup
 
+doStartAttrSet ::
+  -- | the start code to be restored on exit
+  Int ->
+  AlexAction
+doStartAttrSet restoreCode _ sp _ = do
+  pushScope $ Scope AttrSetScope restoreCode sp
+  pure $ Located sp Tok.StartAttrSet
+
+-- | Handle the end of an attribute set. The end of an attribute set resolves
+-- only an end of attribute set scope and nothing else.
+doEndAttrSet :: AlexAction
+doEndAttrSet _ sp _ = do
+  toksDL <- gatherScopesDL willBeClosed globalAct
+  let (emitTok, pending) = unsafeNonEmptyDL toksDL
+  setPendingTokens pending
+  pure emitTok
+  where
+    -- I'm unsure if it is possible for us ever to encounter layout or level
+    -- scopes when resolving the end of an attribute set, or if the
+    -- UnmatchedEndAttrSet error will ever be relevant given our lexing
+    -- strategy. possibly it's best to remove some of these.
+    willBeClosed scope = case scopeType scope of
+      AttrSetScope -> pure $ ScopeStop $ Located sp Tok.EndAttrSet
+      BraceScope -> throwLexError sp $ BraceAttrMismatch $ scopePos scope
+      LayoutScope _ _ -> throwLexError sp $ LayoutAttrMismatch $ scopePos scope
+      LevelScope _ -> throwLexError sp $ LevelAttrMismatch $ scopePos scope
+    globalAct = throwLexError sp UnmatchedEndAttrSet
+
+{-
+
+TODO HERE: I've added attr set handling to the existing functions. now I need to
+
+1. write the begin/end attr set scope handling functions
+
+2. add a new lexer state for "immediately after tag", probably, so we can know
+   that a '[' is significant and actually starts an attribute set scope.
+
+-}
+
 -- | Handle the start of a layout block, pushing a new 'LayoutScope' onto the
 -- stack and setting the new layout depth
-doLayoutTag :: AlexAction
-doLayoutTag _ sp t = case Tok.validEltName tagt of
+doLayoutTag ::
+  -- | the start code to be restored on scope exit
+  Int ->
+  AlexAction
+doLayoutTag restoreCode _ sp t = case Tok.validEltName tagt of
   Just eltname -> do
     ambient <- gets parseStateLayoutDepth
-    pushScope $ Scope (LayoutScope layoutDepth ambient) sp
+    pushScope $ Scope (LayoutScope layoutDepth ambient) restoreCode sp
     setLayoutDepth layoutDepth
     pure $ Located sp $ Tok.LayoutTag eltname
   Nothing -> throwLexError errSp $ InvalidEltName tagt
@@ -277,6 +339,7 @@ doBlanks _ sp t = do
         LevelScope _ -> pure $ ScopeContinue $ conVirtual sp
         LayoutScope _ _ -> pure $ ScopeContinue $ conVirtual sp
         BraceScope -> throwLexError sp $ UnmatchedStartBraceGroup (scopePos scope)
+        AttrSetScope -> throwLexError sp $ UnmatchedStartAttrSet (scopePos scope)
   let incomingColumn = srcCol $ srcSpanEnd sp
   let willBeClosedOther scope = do
         layoutDepth <- gets parseStateLayoutDepth
@@ -287,6 +350,7 @@ doBlanks _ sp t = do
               setLayoutDepth ambientLvl
               pure $ ScopeContinue $ conVirtual sp
             BraceScope -> throwLexError sp $ DeIndentInBracedGroup $ scopePos scope
+            AttrSetScope -> throwLexError sp $ DeIndentInAttrSet $ scopePos scope
           else pure ScopeEnd
   currInput <- gets $ alexInputText . parseStateInput
   let willBeClosed
@@ -308,6 +372,7 @@ doEOF = do
         LayoutScope _ _ -> pure $ ScopeContinue $ conVirtual srcSpan
         LevelScope _ -> pure $ ScopeContinue $ conVirtual srcSpan
         BraceScope -> throwLexError srcSpan $ UnmatchedStartBraceGroup (scopePos scope)
+        AttrSetScope -> throwLexError srcSpan $ UnmatchedStartAttrSet (scopePos scope)
   toksDL <- gatherScopesDL willBeClosed $ pure ()
   let (emitTok, pending) = unsafeNonEmptyDL $ toksDL . (Located srcSpan Tok.TokenEOF :)
   setPendingTokens pending
