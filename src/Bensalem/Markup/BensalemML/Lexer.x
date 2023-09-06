@@ -13,13 +13,13 @@ import Bensalem.Markup.BensalemML.Token
 import qualified Data.Text as T
 }
 
-$plainPlainText = $printable # [ \{ \} \  \n @ ]
-$afterTagPlainText = $printable # [ \[ \] \{ \} = \ \n @ ]
+$plainPlainText = $printable # [ \{ \} \  \n \\ ]
+$afterTagPlainText = $plainPlainText # [ \[ ]
 
-$identish = $printable # [ \[ \] \{ \} \  \n ]
-$inlineStarter = $identish # [@ \; \# &]
+$identish = $printable # [ \[ \] \{ \} \  \n \\ ]
+$inlineStarter = $identish # [ \% ]
 
-$attrKeyish = $printable # [ \[ \] \{ \} \  \n = ]
+$attrKeyish = $identish # [ = ]
 -- happens to be the same for now
 $attrKeyStarter = $attrKeyish
 
@@ -37,17 +37,18 @@ tokens :-
 <plainText> {
   $plainPlainText+ { textTok PlainText }
   \ + { \toklen spn _ -> pure $ Located spn $ LineSpace toklen }
-  @indent { doBlanks }
+  @indent { textTok Blanks }
 
   "{" { doStartBraceGroup plainText }
   "}" { doEndBraceGroup }
 
-  "@@" { plainTok LiteralAt }
-  "@;;" .* { doLineComment }
+  "\\" { plainTok (EscapeSeq EscapeBackslash) }
+  "\{" { plainTok (EscapeSeq EscapeOpenBrace) }
+  "\}" { plainTok (EscapeSeq EscapeCloseBrace) }
 
-  "@" $inlineStarter $identish* { doInlineTag `thenCode` afterTag }
-  "@&" $identish+ { doLayoutTag plainText `thenCode` afterTag }
-  "@" "#"+ $identish+ { doLevelTag plainText `thenCode` afterTag }
+  "\%%" .* { doLineComment }
+
+  \\ $inlineStarter $identish* { doInlineTag `thenCode` afterTag }
 }
 
 -- sadly repetitive - I could probably do some kind of recovery trick in
@@ -58,38 +59,26 @@ tokens :-
 
   $afterTagPlainText+ { textTok PlainText `thenCode` plainText }
   \ + { (\toklen spn _ -> pure $ Located spn $ LineSpace toklen) `thenCode` plainText }
-  @indent { doBlanks `thenCode` plainText }
+  @indent { textTok Blanks `thenCode` plainText }
   "{" { doStartBraceGroup plainText `thenCode` plainText }
   "}" { doEndBraceGroup `thenCode` plainText }
 
-  "@@" { plainTok LiteralAt `thenCode` plainText }
-  "@;;" .* { doLineComment `thenCode` plainText }
+  "\\" { plainTok (EscapeSeq EscapeBackslash) `thenCode` plainText }
+  "\{" { plainTok (EscapeSeq EscapeOpenBrace) `thenCode` plainText }
+  "\}" { plainTok (EscapeSeq EscapeCloseBrace) `thenCode` plainText }
 
-  "@" $inlineStarter $identish* { doInlineTag `thenCode` afterTag }
-  "@&" $identish+ { doLayoutTag plainText `thenCode` afterTag }
-  "@" "#"+ $identish+ { doLevelTag plainText `thenCode` afterTag }
+  "\%%" .* { doLineComment `thenCode` plainText }
+
+  \\ $inlineStarter $identish* { doInlineTag }
 }
 
--- observe that we don't need to lex '}' here, as that's implicitly handled by
--- plainTextMidLine - when we get to the end brace we simply restore the correct
--- start code
-
--- we also use doBlanks, which has the effect of created some space inside the
--- attr set that needs to be stripped out by the parser. the issue is that we
--- can't simply skip line endings, because we need to enforce a lack of
--- deindents inside attribute sets, and I don't think alex allows a "monadic
--- skip", meaning we'd have to hack one together ourselves. happily, we can at
--- least skip line space.
-
 <attrSet> {
-  -- TODO: should really add some checking here!
-  $attrKeyStarter $attrKeyish* { textTok AttrKey }
+  $attrKeyStarter $attrKeyish* { doAttrKey }
   "=" { plainTok Equals }
   "{" { doStartBraceGroup attrSet `thenCode` plainText }
   "[" { doStartAttrSet attrSet }
   "]" { doEndAttrSet }
-  \ + ;
-  @indent { doBlanks }
+  (\ | \n)+ ;
 }
 
 {

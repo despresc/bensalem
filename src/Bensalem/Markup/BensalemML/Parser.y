@@ -45,30 +45,24 @@ parsed either as the start of an argument, or as insignificant text. The shift
 
 %token
   text { Located _ (Tok.PlainText _) }
-  equals { Located _ Tok.Equals }
   blanks { Located _ (Tok.Blanks _) }
   lineSpace { Located _ (Tok.LineSpace _) }
   inlineComment { Located _ (Tok.LineComment _) }
-  literalAt { Located _ Tok.LiteralAt }
   inlineTag { Located _ (Tok.InlineTag _) }
-  levelTag { Located _ (Tok.LevelTag _ _) }
-  layoutTag { Located _ (Tok.LayoutTag _) }
+  escapeSequence { Located _ (Tok.EscapeSeq _) }
   startBrace { Located _ Tok.StartBraceGroup }
   endBrace { Located _ Tok.EndBraceGroup }
   startAttrSet { Located _ Tok.StartAttrSet }
   endAttrSet { Located _ Tok.EndAttrSet }
+  equals { Located _ Tok.Equals }
   attrKey { Located _ (Tok.AttrKey _) }
-  endImplicitScope { Located _ Tok.EndImplicitScope }
 
 %%
 
 -- a top-level node
 MixedContentNode :: { NodeSequence }
   : text { text (locatedVal $ getPlainText $1) }
---  | equals { text "=" }
---  | startAttrSet { text "[" }
---  | endAttrSet { text "]" }
-  | literalAt { text "@" }
+  | escapeSequence { escapeSequence (getEscapeSequence $1) }
   | lineSpace { lineSpace (getLineSpace $1) }
   | blanks { blanks (getBlanks $1) }
   | InsigBracedGroup { $1 }
@@ -92,20 +86,10 @@ InsigBracedGroup
 
 ElementNode :: { NodeSequence }
   : InlineElement { elementNode $1 }
-  | LevelElement { elementNode $1 }
-  | LayoutElement { elementNode $1 }
 
 InlineElement :: { Element }
   : inlineTag OptionalAttrSet OptionalBracedArg
-      { element PresentInline (getInlineTag $1) $2 $3 }
-
-LayoutElement :: { Element }
-  : layoutTag OptionalAttrSet MixedContent endImplicitScope
-      { element PresentLayout (getLayoutTag $1) $2 (Just $3) }
-
-LevelElement :: { Element }
-  : levelTag OptionalAttrSet MixedContent endImplicitScope
-      { element PresentLevel (getLevelTag $1) $2 (Just $3) }
+      { element (getInlineTag $1) $2 $3 }
 
 OptionalAttrSet :: { Attrs }
 OptionalAttrSet
@@ -125,7 +109,7 @@ Attrs
 Attrs1 :: { Seq Attr }
 Attrs1
   : AttrEntry { singleAttr $1 }
-  | Attrs1 Spaces AttrEntry { addAttr $1 $3 }
+  | Attrs1 AttrEntry { addAttr $1 $2 }
 
 AttrEntry :: { Attr }
 AttrEntry
@@ -195,18 +179,12 @@ getInlineComment :: Located Tok.Token -> Located Text
 getInlineComment (Located x (Tok.LineComment t)) = Located x t
 getInlineComment _ = error "Internal error"
 
--- | Partial function that matches a level tag
-getLevelTag :: Located Tok.Token -> Located Text
-getLevelTag (Located x (Tok.LevelTag _ t)) = Located x t
-getLevelTag _ = error "Internal error"
-
--- | Partial function that matches a layout tag
-getLayoutTag :: Located Tok.Token -> Located Text
-getLayoutTag (Located x (Tok.LayoutTag t)) = Located x t
-getLayoutTag _ = error "Internal error"
-
 -- | Partial function that matches an attribute key
 getAttrKey :: Located Tok.Token -> Located Text
 getAttrKey (Located x (Tok.AttrKey k)) = Located x k
 getAttrKey _ = error "Internal error"
+
+getEscapeSequence :: Located Tok.Token -> Located Tok.Escape
+getEscapeSequence (Located x (Tok.EscapeSeq e)) = Located x e
+getEscapeSequence _ = error "Internal error"
 }

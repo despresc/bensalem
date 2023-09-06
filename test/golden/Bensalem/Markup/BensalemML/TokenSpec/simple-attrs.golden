@@ -14,7 +14,6 @@
 (20,1,21)(21,1,22) StartBraceGroup
 (21,1,22)(22,1,23) PlainText "a"
 (22,1,23)(23,1,24) EndBraceGroup
-(23,1,24)(24,2,1) Blanks "\n"
 (24,2,1)(25,2,2) AttrKey "l"
 (25,2,2)(26,2,3) Equals
 (26,2,3)(27,2,4) StartBraceGroup

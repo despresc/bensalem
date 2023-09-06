@@ -14,7 +14,6 @@ fromList
      , srcCol = 11
      }
     }
-   , elementArgPresentation = PresentInline
    , elementName = "inlineelt"
    , elementAttrs = fromList []
    , elementArg = fromList []
@@ -36,7 +35,6 @@ fromList
      , srcCol = 11
      }
     }
-   , elementArgPresentation = PresentInline
    , elementName = "inlineelt"
    , elementAttrs = fromList []
    , elementArg = fromList []
@@ -58,7 +56,6 @@ fromList
      , srcCol = 11
      }
     }
-   , elementArgPresentation = PresentInline
    , elementName = "inlineelt"
    , elementAttrs = fromList []
    , elementArg = fromList []
@@ -80,7 +77,6 @@ fromList
      , srcCol = 11
      }
     }
-   , elementArgPresentation = PresentInline
    , elementName = "inlineelt"
    , elementAttrs = fromList []
    , elementArg = fromList []

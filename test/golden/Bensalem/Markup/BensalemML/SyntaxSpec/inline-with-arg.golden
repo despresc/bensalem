@@ -14,7 +14,6 @@ fromList
      , srcCol = 8
      }
     }
-   , elementArgPresentation = PresentInline
    , elementName = "inline"
    , elementAttrs = fromList []
    , elementArg = fromList
