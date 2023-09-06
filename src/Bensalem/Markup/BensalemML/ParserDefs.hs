@@ -169,10 +169,10 @@ data LexError
     -- of start of brace group)
     UnmatchedStartAttrSet SrcSpan
   | -- | an end of brace group was encountered with no matching start of brace
-    -- | group
+    -- group
     UnmatchedEndBraceGroup
   | -- | an end of brace group was encountered with no matching start of brace
-    -- | group
+    -- group
     UnmatchedEndAttrSet
   | -- | a start of attribute set was ended by an end of braced group (span of
     -- start of attribute set)
@@ -216,11 +216,6 @@ data Located a = Located
   { locatedSpan :: !SrcSpan,
     locatedVal :: a
   }
-  deriving (Eq, Ord, Show)
-
-data MinCol
-  = MinCol !Int
-  | NoMinCol
   deriving (Eq, Ord, Show)
 
 -- | The input for alex, keeping track of 'Text' input as if it were a stream of

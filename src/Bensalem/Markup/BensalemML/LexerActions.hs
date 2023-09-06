@@ -249,17 +249,6 @@ doEndAttrSet _ sp _ = do
       LevelScope _ -> throwLexError sp $ LevelAttrMismatch $ scopePos scope
     globalAct = throwLexError sp UnmatchedEndAttrSet
 
-{-
-
-TODO HERE: I've added attr set handling to the existing functions. now I need to
-
-1. write the begin/end attr set scope handling functions
-
-2. add a new lexer state for "immediately after tag", probably, so we can know
-   that a '[' is significant and actually starts an attribute set scope.
-
--}
-
 -- | Handle the start of a layout block, pushing a new 'LayoutScope' onto the
 -- stack and setting the new layout depth
 doLayoutTag ::

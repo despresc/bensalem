@@ -41,7 +41,7 @@ import Bensalem.Markup.BensalemML.ParserDefs
   ( Located (..),
     SrcSpan (..),
   )
-import Bensalem.Markup.BensalemML.Token (EltName, Escape)
+import Bensalem.Markup.BensalemML.Token (AttrKey, EltName, Escape)
 import qualified Bensalem.Markup.BensalemML.Token as Tok
 import Data.Sequence (Seq (..))
 import qualified Data.Sequence as Seq
@@ -104,14 +104,6 @@ data ScopeContent
   | -- | level elements contain everything in their level scope
     LevelScopeContent !(Seq Node)
   deriving (Eq, Ord, Show)
-
--- | An attribute key is a non-empty string of alphanumeric characters. This
--- currently matches the definition of element names.
-type AttrKey = Text
-
--- TODO: really need to reintroduce this!
--- validAttrKey :: Text -> Maybe AttrKey
--- validAttrKey = Tok.validEltName
 
 -- | A newtype over a sequence of nodes whose semigroup instance will merge
 -- adjacent 'LineSpace' and 'PlainText' nodes
