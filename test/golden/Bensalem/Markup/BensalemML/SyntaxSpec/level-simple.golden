@@ -14,11 +14,11 @@ fromList
      , srcCol = 8
      }
     }
-   , elementArgPresentation = PresentInline
-   , elementName = "inline"
+   , elementArgPresentation = PresentLevel
+   , elementName = "level"
    , elementAttrs = fromList []
    , elementArg = fromList
-    [ PlainText "{}thing" ]
+    [ PlainText "content" ]
    }
   )
  , LineEnd

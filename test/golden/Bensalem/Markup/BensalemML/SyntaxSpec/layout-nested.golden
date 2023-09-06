@@ -1,0 +1,53 @@
+fromList
+ [ ElementNode
+  ( Element
+   { elementTagPos = SrcSpan
+    { srcSpanName = ""
+    , srcSpanStart = SrcPos
+     { srcOffset = 0
+     , srcLine = 1
+     , srcCol = 1
+     }
+    , srcSpanEnd = SrcPos
+     { srcOffset = 8
+     , srcLine = 1
+     , srcCol = 9
+     }
+    }
+   , elementArgPresentation = PresentLayout
+   , elementName = "layout"
+   , elementAttrs = fromList []
+   , elementArg = fromList
+    [ LineSpace 2
+    , ElementNode
+     ( Element
+      { elementTagPos = SrcSpan
+       { srcSpanName = ""
+       , srcSpanStart = SrcPos
+        { srcOffset = 11
+        , srcLine = 2
+        , srcCol = 3
+        }
+       , srcSpanEnd = SrcPos
+        { srcOffset = 18
+        , srcLine = 2
+        , srcCol = 10
+        }
+       }
+      , elementArgPresentation = PresentLayout
+      , elementName = "inner"
+      , elementAttrs = fromList []
+      , elementArg = fromList
+       [ LineSpace 4
+       , PlainText "content"
+       ]
+      }
+     )
+    , LineEnd
+    , LineSpace 2
+    , PlainText "more"
+    ]
+   }
+  )
+ , LineEnd
+ ]

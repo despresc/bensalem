@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 -- |
 -- Description : Intermediate bensalem document syntax
 -- Copyright   : 2021 Christian Despres
@@ -27,7 +25,6 @@ module Bensalem.Markup.BensalemML.Syntax.Intermediate
     text,
     lineSpace,
     blanks,
-    escapeSequence,
     inlineComment,
     elementNode,
     element,
@@ -43,7 +40,6 @@ import Bensalem.Markup.BensalemML.ParserDefs
     SrcSpan (..),
   )
 import Bensalem.Markup.BensalemML.Token (EltName)
-import qualified Bensalem.Markup.BensalemML.Token as Tok
 import Data.Sequence (Seq (..))
 import qualified Data.Sequence as Seq
 import Data.Text (Text)
@@ -68,6 +64,7 @@ data Node
 -- element is always empty.
 data Element = Element
   { elementTagPos :: !SrcSpan,
+    elementPresentation :: !Presentation,
     elementName :: !EltName,
     elementAttrs :: !Attrs,
     elementArg :: !Arg
@@ -156,12 +153,6 @@ blanks (Located _ t) = NodeSequence $ Seq.fromList chunks
       where
         n = T.length x
 
-escapeSequence :: Located Tok.Escape -> NodeSequence
-escapeSequence (Located _ e) = case e of
-  Tok.EscapeBackslash -> singleNode $ PlainText "\\"
-  Tok.EscapeOpenBrace -> singleNode $ PlainText "{"
-  Tok.EscapeCloseBrace -> singleNode $ PlainText "}"
-
 -- | Unsafely construct a 'NodesBuilder' sequence representing a run of single
 -- spaces.
 lineSpace :: Located Int -> NodeSequence
@@ -173,9 +164,9 @@ inlineComment (Located _ t) = singleNode $ InlineComment t
 elementNode :: Element -> NodeSequence
 elementNode = singleNode . ElementNode
 
-element :: Located EltName -> Attrs -> Maybe NodeSequence -> Element
-element elname attrs content =
-  Element (locatedSpan elname) (locatedVal elname) attrs content'
+element :: Presentation -> Located EltName -> Attrs -> Maybe NodeSequence -> Element
+element pres elname attrs content =
+  Element (locatedSpan elname) pres (locatedVal elname) attrs content'
   where
     content' = maybe NoArg (Arg . unNodeSequence) content
 

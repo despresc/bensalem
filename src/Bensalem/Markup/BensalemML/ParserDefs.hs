@@ -133,6 +133,9 @@ data Scope = Scope
 data ScopeType
   = BraceScope
   | AttrSetScope
+  | -- | the depth it defines, the ambient depth
+    LayoutScope !Int !Int
+  | LevelScope !Int
   deriving (Eq, Ord, Show)
 
 -- | A possible error that can occur during parsing
@@ -155,16 +158,8 @@ data ParseError
 data LexError
   = -- | lexically invalid element name
     InvalidEltName Text
-  | -- | lexically invalid attribute key
-    InvalidAttrKey Text
   | -- | a token could not be parsed
     NoToken
-  | -- | scope begin was matched by (different) scope end
-    ScopeMismatch !Scope !ScopeType
-  | -- | reached EOF with active scope
-    UnmatchedBeginScope !Scope
-  | -- | Scope end had no corresponding scope beginning
-    UnmatchedEndScope !ScopeType
   | -- | a start of brace group was not matched by an end of brace group (span
     -- of start of brace group)
     UnmatchedStartBraceGroup SrcSpan
@@ -183,6 +178,16 @@ data LexError
   | -- | a start of braced group attribute set was ended by an end of attribute
     -- set (span of start of braced group)
     BraceAttrMismatch SrcSpan
+  | -- | a layout scope was ended by an end of attribute set (span of layout
+    -- tag)
+    LayoutAttrMismatch SrcSpan
+  | -- | a start of braced group attribute set was ended by an end of attribute
+    -- set (span of layout tag)
+    LevelAttrMismatch SrcSpan
+  | -- | a de-indent occurred in a braced group (span of start of braced group)
+    DeIndentInBracedGroup SrcSpan
+  | -- | a de-indent occurred in attribute set (span of start of attribute set)
+    DeIndentInAttrSet SrcSpan
   deriving (Eq, Ord, Show)
 
 -- | A position in a 'Char' stream. The 'srcOffset' is the index of the position
@@ -209,6 +214,11 @@ data Located a = Located
   { locatedSpan :: !SrcSpan,
     locatedVal :: a
   }
+  deriving (Eq, Ord, Show)
+
+data MinCol
+  = MinCol !Int
+  | NoMinCol
   deriving (Eq, Ord, Show)
 
 -- | The input for alex, keeping track of 'Text' input as if it were a stream of

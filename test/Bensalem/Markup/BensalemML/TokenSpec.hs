@@ -42,7 +42,9 @@ goldenTests =
   testGroup
     "Golden tests"
     [ simpleGold "simple-tokens" "tokenizes simple tokens properly",
-      simpleGold "simple-attrs" "tokenizes some simple attributes"
+      simpleGold "simple-attrs" "tokenizes some simple attributes",
+      simpleGold "level-closing-layout-1" "tokenizes a tricky level-layout interaction",
+      simpleGold "level-closing-layout-2" "tokenizes another tricky level-layout interaction"
     ]
   where
     base = "./test/golden/Bensalem/Markup/BensalemML/TokenSpec/"

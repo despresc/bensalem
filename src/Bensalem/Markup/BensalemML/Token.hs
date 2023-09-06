@@ -21,33 +21,34 @@ data Token
     Blanks !Text
   | -- | spaces not at the beginning of a line
     LineSpace !Int
-  | -- | @\\%%comment text@
+  | -- | @\@;;comment text@
     LineComment !Text
-  | -- | @\\tag@
+  | -- | @\@tag@
     InlineTag !EltName
-  | -- | an escape sequence
-    EscapeSeq Escape
+  | -- | @\@#tagname@
+    LevelTag !Int !EltName
+  | -- | @\@&tagname@
+    LayoutTag !EltName
+  | -- | @\@\@@
+    LiteralAt
   | -- | @{@
     StartBraceGroup
   | -- | @}@
     EndBraceGroup
   | -- | @[@ right after a tag
     StartAttrSet
-  | -- | @]@ when closing an attribute set
+  | -- | @]@
     EndAttrSet
   | -- | @=@
     Equals
   | -- | a potential attribute key
-    AttrKey !AttrKey
+    AttrKey !Text
+  | -- | virtual token (zero-width, not appearing explicitly in the source)
+    -- denoting the end of content for a level or layout element
+    EndImplicitScope
   | -- | the end of file token. should only appear as the final token in a
     -- stream
     TokenEOF
-  deriving (Eq, Ord, Show)
-
-data Escape
-  = EscapeBackslash
-  | EscapeOpenBrace
-  | EscapeCloseBrace
   deriving (Eq, Ord, Show)
 
 -- | Render a single token back to 'Text'
@@ -55,21 +56,19 @@ renderToken :: Token -> Text
 renderToken (PlainText t) = t
 renderToken (Blanks ls) = ls
 renderToken (LineSpace n) = T.replicate n " "
-renderToken (LineComment t) = "\\%%" <> t
-renderToken (InlineTag t) = "\\" <> t
-renderToken (EscapeSeq esc) = renderEscape esc
+renderToken (LineComment t) = "@;;" <> t
+renderToken (InlineTag t) = "@" <> t
+renderToken (LevelTag n t) = "@" <> T.replicate n "#" <> t
+renderToken (LayoutTag t) = "@&" <> t
+renderToken LiteralAt = "@@"
 renderToken StartBraceGroup = "{"
 renderToken EndBraceGroup = "}"
 renderToken StartAttrSet = "["
 renderToken EndAttrSet = "]"
 renderToken Equals = "="
 renderToken (AttrKey k) = k
+renderToken EndImplicitScope = ""
 renderToken TokenEOF = ""
-
-renderEscape :: Escape -> Text
-renderEscape EscapeBackslash = "\\\\"
-renderEscape EscapeOpenBrace = "\\{"
-renderEscape EscapeCloseBrace = "\\}"
 
 -- | The line that a 'BlankLine' or 'Indent' token starts, or the line
 -- on which a 'Comment' ends
@@ -83,10 +82,6 @@ type Indent = Int
 -- characters, dashes, and underscores
 type EltName = Text
 
--- | A lexically-valid attribute key, which is a sequence of unicode
--- alphanumeric characters, dashes, and underscores
-type AttrKey = Text
-
 -- | Tests whether or not the 'Text' is a valid 'EltName'. Presently, a valid
 -- 'EltName' is simply a string of alphanumeric characters, dashes, and
 -- underscores.
@@ -96,6 +91,3 @@ validEltName t
   | otherwise = Nothing
   where
     isValidChar c = isAlphaNum c || c == '-' || c == '_'
-
-validAttrKey :: Text -> Maybe AttrKey
-validAttrKey = validEltName

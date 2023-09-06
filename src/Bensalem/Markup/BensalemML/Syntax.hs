@@ -35,6 +35,7 @@ import Bensalem.Markup.BensalemML.Syntax.Intermediate (Presentation (..))
 import qualified Bensalem.Markup.BensalemML.Syntax.Intermediate as SI
 import Bensalem.Markup.BensalemML.Token (EltName)
 import Data.Sequence (Seq (..))
+import qualified Data.Sequence as Seq
 import Data.Text (Text)
 
 -- | Parse a sequence of bensalem nodes from the given input. These nodes are
@@ -80,6 +81,7 @@ data Node
 -- element is always empty.
 data Element = Element
   { elementTagPos :: !SrcSpan,
+    elementArgPresentation :: !SI.Presentation,
     elementName :: !EltName,
     elementAttrs :: !(Seq Attr),
     elementArg :: !(Seq Node)
@@ -108,10 +110,11 @@ fromIntermediateNodes = go mempty
     go !acc (SI.InlineComment _ :<| xs) = go acc xs
     go !acc (SI.ElementNode e :<| xs) = do
       attrs' <- convertAttrs $ SI.elementAttrs e
-      content' <- convertContent $ SI.elementArg e
+      content' <- convertContent (SI.elementPresentation e) $ SI.elementArg e
       let elt =
             Element
               (SI.elementTagPos e)
+              (SI.elementPresentation e)
               (SI.elementName e)
               attrs'
               content'
@@ -131,17 +134,35 @@ fromIntermediateNodes = go mempty
         attrs' <- convertAttrs $ SI.Attrs attrs
         pure $ Attr (locatedSpan locT) (locatedVal locT) $ AttrValSet attrs'
 
-    convertContent SI.NoArg = pure mempty
-    convertContent (SI.Arg x) = convertBracedContent x
+    convertContent _ SI.NoArg = pure mempty
+    convertContent p (SI.Arg x) = handleContent p x
+
+    isSpaceNode SI.LineEnd = True
+    isSpaceNode (SI.LineSpace _) = True
+    isSpaceNode _ = False
+
+    stripBeginSpaces = Seq.dropWhileL isSpaceNode
+    stripEndSpaces = Seq.dropWhileR isSpaceNode
 
     -- from the front, drop a single blank line
     stripBeginBlank (SI.LineSpace _ :<| SI.LineEnd :<| nodes) = nodes
     stripBeginBlank (SI.LineEnd :<| nodes) = nodes
     stripBeginBlank nodes = nodes
 
+    -- from the front, drop all blank lines
+    stripBeginBlanks (SI.LineSpace _ :<| SI.LineEnd :<| nodes) = stripBeginBlanks nodes
+    stripBeginBlanks (SI.LineEnd :<| nodes) = stripBeginBlanks nodes
+    stripBeginBlanks nodes = nodes
+
     -- from the end, drop a single blank line
     stripEndBlank (nodes :|> SI.LineEnd :|> SI.LineSpace _) = nodes
     stripEndBlank (nodes :|> SI.LineEnd) = nodes
     stripEndBlank nodes = nodes
+
+    handleContent PresentInline = convertBracedContent
+    -- TODO: I think this is a little too defensive - as a consequence of our
+    -- lexing strategy there never be any trailing blanks in a layout argument.
+    handleContent PresentLayout = fromIntermediateNodes . stripBeginBlanks . stripEndBlank
+    handleContent PresentLevel = fromIntermediateNodes . stripBeginSpaces . stripEndSpaces
 
     convertBracedContent = fromIntermediateNodes . stripBeginBlank . stripEndBlank
