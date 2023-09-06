@@ -14,31 +14,65 @@ fromList
      , srcCol = 8
      }
     }
-   , elementArgPresentation = PresentInline
    , elementName = "inline"
-   , elementAttrs = fromList
-    [ Attr
-     ( SrcSpan
-      { srcSpanName = ""
-      , srcSpanStart = SrcPos
-       { srcOffset = 8
-       , srcLine = 1
-       , srcCol = 9
+   , elementAttrs = Attrs
+    ( fromList
+     [
+      ( Located
+       { locatedSpan = SrcSpan
+        { srcSpanName = ""
+        , srcSpanStart = SrcPos
+         { srcOffset = 8
+         , srcLine = 1
+         , srcCol = 9
+         }
+        , srcSpanEnd = SrcPos
+         { srcOffset = 13
+         , srcLine = 1
+         , srcCol = 14
+         }
+        }
+       , locatedVal = "attr1"
        }
-      , srcSpanEnd = SrcPos
-       { srcOffset = 13
-       , srcLine = 1
-       , srcCol = 14
-       }
-      }
-     ) "attr1"
-     ( AttrValMarkup
-      ( fromList
-       [ PlainText "thing" ]
+      , BracedAttrVal
+       ( fromList
+        [ PlainText "thing" ]
+       )
       )
-     )
-    ]
-   , elementArg = fromList
+     ]
+    )
+   , elementScopeContent = InlineScopeContent
+   }
+  )
+ , GroupNode
+  ( Group
+   { groupStart = SrcSpan
+    { srcSpanName = ""
+    , srcSpanStart = SrcPos
+     { srcOffset = 22
+     , srcLine = 1
+     , srcCol = 23
+     }
+    , srcSpanEnd = SrcPos
+     { srcOffset = 23
+     , srcLine = 1
+     , srcCol = 24
+     }
+    }
+   , groupEnd = SrcSpan
+    { srcSpanName = ""
+    , srcSpanStart = SrcPos
+     { srcOffset = 31
+     , srcLine = 1
+     , srcCol = 32
+     }
+    , srcSpanEnd = SrcPos
+     { srcOffset = 32
+     , srcLine = 1
+     , srcCol = 33
+     }
+    }
+   , groupContent = fromList
     [ PlainText "argument" ]
    }
   )

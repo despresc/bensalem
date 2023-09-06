@@ -1,7 +1,5 @@
-{-# LANGUAGE BangPatterns #-}
-
 -- |
--- Description : Bensalem document syntax
+-- Description : Intermediate bensalem document syntax
 -- Copyright   : 2021 Christian Despres
 -- License     : BSD-2-Clause
 -- Maintainer  : Christian Despres
@@ -14,53 +12,41 @@ module Bensalem.Markup.BensalemML.Syntax
   ( -- * Syntax types
     Node (..),
     Element (..),
-    Presentation (..),
+    ScopeContent (..),
+    Attrs (..),
     AttrKey,
     AttrVal (..),
 
-    -- * Parsing
-    parseNodes,
+    -- * Intermediate syntax builders
+    NodeSequence (..),
+    Attr,
+    text,
+    lineSpace,
+    indent,
+    escape,
+    inlineComment,
+    group,
+    elementNode,
+    element,
+    layoutScopeContent,
+    levelScopeContent,
+    singleAttr,
+    addAttr,
+    bracedAttrVal,
+    setAttrVal,
   )
 where
 
-import qualified Bensalem.Markup.BensalemML.Parser as SP
 import Bensalem.Markup.BensalemML.ParserDefs
   ( Located (..),
-    ParseError (..),
     SrcSpan (..),
-    evalParser,
-    initAlexInput,
   )
-import Bensalem.Markup.BensalemML.Syntax.Intermediate (Presentation (..))
-import qualified Bensalem.Markup.BensalemML.Syntax.Intermediate as SI
-import Bensalem.Markup.BensalemML.Token (EltName)
+import Bensalem.Markup.BensalemML.Token (EltName, Escape)
+import qualified Bensalem.Markup.BensalemML.Token as Tok
 import Data.Sequence (Seq (..))
+import qualified Data.Sequence as Seq
 import Data.Text (Text)
-
--- | Parse a sequence of bensalem nodes from the given input. These nodes are
--- assumed to be in the outermost scope of a document (in particular, not in an
--- indentation or level scope).
-parseNodesTW ::
-  -- | tab width (for error location reporting only)
-  Int ->
-  -- | input name
-  Text ->
-  -- | input
-  Text ->
-  Either ParseError (Seq Node)
-parseNodesTW tw nm inp = do
-  nodes <- evalParser SP.parseNodes $ initAlexInput tw nm inp
-  fromIntermediateNodes nodes
-
--- | Parse a sequence of bensalem nodes from the given input with
--- 'parseNodesTW', with a default tab width of 8
-parseNodes ::
-  -- | input name
-  Text ->
-  -- | input
-  Text ->
-  Either ParseError (Seq Node)
-parseNodes = parseNodesTW 8
+import qualified Data.Text as T
 
 -- | A single node in bensalem syntax
 data Node
@@ -71,6 +57,15 @@ data Node
   | -- | a line ending
     LineEnd
   | ElementNode !Element
+  | GroupNode !Group
+  | InlineComment !Text
+  deriving (Eq, Ord, Show)
+
+data Group = Group
+  { groupStart :: !SrcSpan,
+    groupEnd :: !SrcSpan,
+    groupContent :: !(Seq Node)
+  }
   deriving (Eq, Ord, Show)
 
 -- | An element tag. Note that we only save the position of the element tag
@@ -80,85 +75,129 @@ data Node
 -- element is always empty.
 data Element = Element
   { elementTagPos :: !SrcSpan,
-    elementArgPresentation :: !SI.Presentation,
     elementName :: !EltName,
-    elementAttrs :: !(Seq Attr),
-    elementArg :: !(Seq Node)
+    elementAttrs :: !Attrs,
+    elementScopeContent :: !ScopeContent
   }
   deriving (Eq, Ord, Show)
 
--- TODO: opaqueness and checking of the AttrKey
-data Attr = Attr !SrcSpan !AttrKey !AttrVal
+data Attrs = NoAttrs | Attrs !(Seq Attr)
   deriving (Eq, Ord, Show)
 
+-- | A raw attribute
+type Attr = (Located Text, AttrVal)
+
+data AttrVal
+  = BracedAttrVal !(Seq Node)
+  | SetAttrVal !(Seq Attr)
+  deriving (Eq, Ord, Show)
+
+data Presentation = PresentInline | PresentLayout | PresentLevel
+  deriving (Eq, Ord, Show)
+
+-- | The possible scope content of an element
+data ScopeContent
+  = -- | inline elements have no scope content
+    InlineScopeContent
+  | -- | layout elements contain everything in their layout scope
+    LayoutScopeContent !(Seq Node)
+  | -- | level elements contain everything in their level scope
+    LevelScopeContent !(Seq Node)
+  deriving (Eq, Ord, Show)
+
+-- | An attribute key is a non-empty string of alphanumeric characters. This
+-- currently matches the definition of element names.
 type AttrKey = Text
 
--- | An attribute value
-data AttrVal
-  = AttrValMarkup !(Seq Node)
-  | AttrValSet !(Seq Attr)
+-- TODO: really need to reintroduce this!
+-- validAttrKey :: Text -> Maybe AttrKey
+-- validAttrKey = Tok.validEltName
+
+-- | A newtype over a sequence of nodes whose semigroup instance will merge
+-- adjacent 'LineSpace' and 'PlainText' nodes
+
+-- TODO: make opaque? want to maintain invariant that line space and plain text
+-- is always merged
+newtype NodeSequence = NodeSequence {unNodeSequence :: Seq Node}
   deriving (Eq, Ord, Show)
 
--- TODO: need to add in the checking and the indentation stripping!
-fromIntermediateNodes :: Seq SI.Node -> Either ParseError (Seq Node)
-fromIntermediateNodes = go mempty
+singleNode :: Node -> NodeSequence
+singleNode = NodeSequence . Seq.singleton
+
+instance Semigroup NodeSequence where
+  NodeSequence x@(s :|> n) <> NodeSequence y@(m :<| t) = case (n, m) of
+    (LineSpace a, LineSpace b) -> NodeSequence $ s <> Seq.singleton (LineSpace $ a + b) <> t
+    (PlainText a, PlainText b) -> NodeSequence $ s <> Seq.singleton (PlainText $ a <> b) <> t
+    _ -> NodeSequence $ x <> y
+  NodeSequence x <> NodeSequence Empty = NodeSequence x
+  NodeSequence Empty <> NodeSequence y = NodeSequence y
+
+instance Monoid NodeSequence where
+  mempty = NodeSequence mempty
+
+-- | Unsafely construct a 'MixedContent' sequence from 'Text'. This function
+-- does not check that the 'Text' is free of syntactically-significant
+-- characters.
+text :: Text -> NodeSequence
+text t = singleNode $ PlainText t
+
+-- | Unsafely construct a 'NodesBuilder' sequence from 'Text' consisting of
+-- newlines and spaces
+indent :: Located Text -> NodeSequence
+indent (Located _ t) = NodeSequence $ Seq.fromList chunks
   where
-    go !acc (SI.PlainText t :<| xs) = go (acc :|> PlainText t) xs
-    go !acc (SI.LineSpace n :<| xs) = go (acc :|> LineSpace n) xs
-    go !acc (SI.LineEnd :<| xs) = go (acc :|> LineEnd) xs
-    go !acc (SI.InlineComment _ :<| xs) = go acc xs
-    go !acc (SI.ElementNode e :<| xs) = do
-      attrs' <- convertAttrs $ SI.elementAttrs e
-      content' <- convertContent (SI.elementPresentation e) $ SI.elementArg e
-      let elt =
-            Element
-              (SI.elementTagPos e)
-              (SI.elementPresentation e)
-              (SI.elementName e)
-              attrs'
-              content'
-      go (acc :|> ElementNode elt) xs
-    go !acc Empty = pure acc
+    -- slightly different behaviour from Text.lines, since that function doesn't
+    -- handle trailing newlines the way it's needed to here
+    customLines x
+      | T.null x = []
+      | otherwise = begin : customLines end
+      where
+        (begin, end) = T.break (== '\n') $ T.drop 1 x
+    chunks = concatMap go $ customLines t
+    go x
+      | n <= 0 = [LineEnd]
+      | otherwise = [LineEnd, LineSpace n]
+      where
+        n = T.length x
 
-    convertAttrs :: SI.Attrs -> Either ParseError (Seq Attr)
-    convertAttrs SI.NoAttrs = pure mempty
-    convertAttrs (SI.Attrs x) = traverse convertAttr x
+escape :: Located Escape -> NodeSequence
+escape (Located _ e) = singleNode $ PlainText $ Tok.escapeText e
 
-    convertAttr (locT, v) = case v of
-      SI.BracedAttrVal nodes -> do
-        -- we handle braced attribute values just like braced arguments
-        nodes' <- convertBracedContent nodes
-        pure $ Attr (locatedSpan locT) (locatedVal locT) $ AttrValMarkup nodes'
-      SI.SetAttrVal attrs -> do
-        attrs' <- convertAttrs $ SI.Attrs attrs
-        pure $ Attr (locatedSpan locT) (locatedVal locT) $ AttrValSet attrs'
+-- | Unsafely construct a 'NodesBuilder' sequence representing a run of single
+-- spaces.
+lineSpace :: Located Int -> NodeSequence
+lineSpace (Located _ n) = singleNode $ LineSpace n
 
-    convertContent _ SI.NoArg = pure mempty
-    convertContent p (SI.Arg x) = handleContent p x
+inlineComment :: Located Text -> NodeSequence
+inlineComment (Located _ t) = singleNode $ InlineComment t
 
-    -- from the front, drop a single blank line
-    stripBeginBlank (SI.LineSpace _ :<| SI.LineEnd :<| nodes) = nodes
-    stripBeginBlank (SI.LineEnd :<| nodes) = nodes
-    stripBeginBlank nodes = nodes
+group :: Located Tok.Token -> NodeSequence -> Located Tok.Token -> NodeSequence
+group startBrace ns endBrace =
+  singleNode $
+    GroupNode $
+      Group (locatedSpan startBrace) (locatedSpan endBrace) (unNodeSequence ns)
 
-    -- from the front, drop all blank lines
-    stripBeginBlanks (SI.LineSpace _ :<| SI.LineEnd :<| nodes) = stripBeginBlanks nodes
-    stripBeginBlanks (SI.LineEnd :<| nodes) = stripBeginBlanks nodes
-    stripBeginBlanks nodes = nodes
+elementNode :: Element -> NodeSequence
+elementNode = singleNode . ElementNode
 
-    -- from the end, drop a single blank line
-    stripEndBlank (nodes :|> SI.LineEnd :|> SI.LineSpace _) = nodes
-    stripEndBlank (nodes :|> SI.LineEnd) = nodes
-    stripEndBlank nodes = nodes
+element :: Located EltName -> Attrs -> ScopeContent -> Element
+element elname attrs =
+  Element (locatedSpan elname) (locatedVal elname) attrs
 
-    stripEndBlanks (nodes :|> SI.LineEnd :|> SI.LineSpace _) = stripEndBlanks nodes
-    stripEndBlanks (nodes :|> SI.LineEnd) = stripEndBlanks nodes
-    stripEndBlanks nodes = nodes
+layoutScopeContent :: NodeSequence -> ScopeContent
+layoutScopeContent = LayoutScopeContent . unNodeSequence
 
-    handleContent PresentInline = convertBracedContent
-    -- TODO: I think this is a little too defensive - as a consequence of our
-    -- lexing strategy there never be any trailing blanks in a layout argument.
-    handleContent PresentLayout = fromIntermediateNodes . stripBeginBlanks . stripEndBlank
-    handleContent PresentLevel = fromIntermediateNodes . stripBeginBlanks . stripEndBlanks
+levelScopeContent :: NodeSequence -> ScopeContent
+levelScopeContent = LevelScopeContent . unNodeSequence
 
-    convertBracedContent = fromIntermediateNodes . stripBeginBlank . stripEndBlank
+singleAttr :: Attr -> Seq Attr
+singleAttr = Seq.singleton
+
+addAttr :: Seq Attr -> Attr -> Seq Attr
+addAttr = (:|>)
+
+bracedAttrVal :: NodeSequence -> AttrVal
+bracedAttrVal = BracedAttrVal . unNodeSequence
+
+setAttrVal :: Seq Attr -> AttrVal
+setAttrVal = SetAttrVal

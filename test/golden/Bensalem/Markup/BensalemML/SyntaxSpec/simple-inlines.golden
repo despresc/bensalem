@@ -14,10 +14,9 @@ fromList
      , srcCol = 11
      }
     }
-   , elementArgPresentation = PresentInline
    , elementName = "inlineelt"
-   , elementAttrs = fromList []
-   , elementArg = fromList []
+   , elementAttrs = NoAttrs
+   , elementScopeContent = InlineScopeContent
    }
   )
  , LineEnd
@@ -36,10 +35,10 @@ fromList
      , srcCol = 11
      }
     }
-   , elementArgPresentation = PresentInline
    , elementName = "inlineelt"
-   , elementAttrs = fromList []
-   , elementArg = fromList []
+   , elementAttrs = Attrs
+    ( fromList [] )
+   , elementScopeContent = InlineScopeContent
    }
   )
  , LineEnd
@@ -58,10 +57,40 @@ fromList
      , srcCol = 11
      }
     }
-   , elementArgPresentation = PresentInline
    , elementName = "inlineelt"
-   , elementAttrs = fromList []
-   , elementArg = fromList []
+   , elementAttrs = NoAttrs
+   , elementScopeContent = InlineScopeContent
+   }
+  )
+ , GroupNode
+  ( Group
+   { groupStart = SrcSpan
+    { srcSpanName = ""
+    , srcSpanStart = SrcPos
+     { srcOffset = 34
+     , srcLine = 3
+     , srcCol = 11
+     }
+    , srcSpanEnd = SrcPos
+     { srcOffset = 35
+     , srcLine = 3
+     , srcCol = 12
+     }
+    }
+   , groupEnd = SrcSpan
+    { srcSpanName = ""
+    , srcSpanStart = SrcPos
+     { srcOffset = 35
+     , srcLine = 3
+     , srcCol = 12
+     }
+    , srcSpanEnd = SrcPos
+     { srcOffset = 36
+     , srcLine = 3
+     , srcCol = 13
+     }
+    }
+   , groupContent = fromList []
    }
   )
  , LineEnd
@@ -80,10 +109,41 @@ fromList
      , srcCol = 11
      }
     }
-   , elementArgPresentation = PresentInline
    , elementName = "inlineelt"
-   , elementAttrs = fromList []
-   , elementArg = fromList []
+   , elementAttrs = Attrs
+    ( fromList [] )
+   , elementScopeContent = InlineScopeContent
+   }
+  )
+ , GroupNode
+  ( Group
+   { groupStart = SrcSpan
+    { srcSpanName = ""
+    , srcSpanStart = SrcPos
+     { srcOffset = 49
+     , srcLine = 4
+     , srcCol = 13
+     }
+    , srcSpanEnd = SrcPos
+     { srcOffset = 50
+     , srcLine = 4
+     , srcCol = 14
+     }
+    }
+   , groupEnd = SrcSpan
+    { srcSpanName = ""
+    , srcSpanStart = SrcPos
+     { srcOffset = 50
+     , srcLine = 4
+     , srcCol = 14
+     }
+    , srcSpanEnd = SrcPos
+     { srcOffset = 51
+     , srcLine = 4
+     , srcCol = 15
+     }
+    }
+   , groupContent = fromList []
    }
   )
  , LineEnd

@@ -7,7 +7,7 @@
 -- Maintainer  : Christian Despres
 module Bensalem.Markup.BensalemML.SyntaxSpec where
 
-import Bensalem.Markup.BensalemML.Syntax (parseNodes)
+import Bensalem.Markup.BensalemML.Parser (parseNodes)
 import Test.Common
 import Test.Tasty
 

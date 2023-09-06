@@ -14,25 +14,27 @@ fromList
      , srcCol = 9
      }
     }
-   , elementArgPresentation = PresentLayout
    , elementName = "layout"
-   , elementAttrs = fromList []
-   , elementArg = fromList
-    [ LineSpace 2
-    , PlainText "with"
-    , LineSpace 1
-    , PlainText "some"
-    , LineSpace 1
-    , PlainText "content"
-    , LineEnd
-    , LineSpace 5
-    , PlainText "and"
-    , LineSpace 1
-    , PlainText "more"
-    , LineEnd
-    , LineSpace 3
-    , PlainText "here"
-    ]
+   , elementAttrs = NoAttrs
+   , elementScopeContent = LayoutScopeContent
+    ( fromList
+     [ LineEnd
+     , LineSpace 2
+     , PlainText "with"
+     , LineSpace 1
+     , PlainText "some"
+     , LineSpace 1
+     , PlainText "content"
+     , LineEnd
+     , LineSpace 5
+     , PlainText "and"
+     , LineSpace 1
+     , PlainText "more"
+     , LineEnd
+     , LineSpace 3
+     , PlainText "here"
+     ]
+    )
    }
   )
  , LineEnd

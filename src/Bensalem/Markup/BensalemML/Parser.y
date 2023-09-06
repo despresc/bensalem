@@ -10,15 +10,17 @@
 -- The main document parser
 
 module Bensalem.Markup.BensalemML.Parser
-  (parseNodes) where
+  (parseNodes,parseNodesTW,pNodes) where
 
-import Bensalem.Markup.BensalemML.Syntax.Intermediate
+import Bensalem.Markup.BensalemML.Syntax
 import Bensalem.Markup.BensalemML.ParserDefs
   (Located(..),
    Parser,
    ParseError(..),
    SrcSpan(..),
-   throwParseError)
+   throwParseError,
+   evalParser,
+   initAlexInput)
 import qualified Bensalem.Markup.BensalemML.Token as Tok
 import Bensalem.Markup.BensalemML.Lexer (lexToken)
 
@@ -28,14 +30,7 @@ import Data.Text (Text)
 import Data.Sequence (Seq)
 }
 
-%expect 1 -- shift/reduce conflicts
-{- A note on the shift/reduce conflicts
-
-The 1 conflict here is due to the fact that '{' immediately after a tag could be
-parsed either as the start of an argument, or as insignificant text. The shift
-(which happy chooses) represents the former and is correct.
-
--}
+%expect 0 -- shift/reduce conflicts
 
 %name pManyNodes MixedContent
 %tokentype { Located Tok.Token }
@@ -65,13 +60,10 @@ parsed either as the start of an argument, or as insignificant text. The shift
 -- a top-level node
 MixedContentNode :: { NodeSequence }
   : text { text (locatedVal $ getPlainText $1) }
---  | equals { text "=" }
---  | startAttrSet { text "[" }
---  | endAttrSet { text "]" }
   | escape { escape (getEscape $1) }
   | lineSpace { lineSpace (getLineSpace $1) }
   | indent { indent (getIndent $1) }
-  | InsigBracedGroup { $1 }
+  | GroupNode { $1 }
   | ElementNode { $1 }
   | inlineComment { inlineComment (getInlineComment $1) }
 
@@ -83,12 +75,9 @@ MixedContent1 :: { NodeSequence }
   : MixedContentNode { $1 }
   | MixedContent1 MixedContentNode { $1 <> $2 }
 
-InsigBracedGroup :: { NodeSequence }
-InsigBracedGroup
-  : startBrace MixedContent endBrace { mconcat
-                                         [ text "{"
-                                         , $2
-                                         , text "}" ] }
+GroupNode :: { NodeSequence }
+GroupNode
+  : startBrace MixedContent endBrace { group $1 $2 $3 }
 
 ElementNode :: { NodeSequence }
   : InlineElement { elementNode $1 }
@@ -96,16 +85,16 @@ ElementNode :: { NodeSequence }
   | LayoutElement { elementNode $1 }
 
 InlineElement :: { Element }
-  : inlineTag OptionalAttrSet OptionalBracedArg
-      { element PresentInline (getInlineTag $1) $2 $3 }
+  : inlineTag OptionalAttrSet
+      { element (getInlineTag $1) $2 InlineScopeContent }
 
 LayoutElement :: { Element }
   : layoutTag OptionalAttrSet MixedContent endImplicitScope
-      { element PresentLayout (getLayoutTag $1) $2 (Just $3) }
+      { element (getLayoutTag $1) $2 (layoutScopeContent $3) }
 
 LevelElement :: { Element }
   : levelTag OptionalAttrSet MixedContent endImplicitScope
-      { element PresentLevel (getLevelTag $1) $2 (Just $3) }
+      { element (getLevelTag $1) $2 (levelScopeContent $3) }
 
 OptionalAttrSet :: { Attrs }
 OptionalAttrSet
@@ -140,11 +129,6 @@ AttrVal
   : startBrace MixedContent endBrace { bracedAttrVal $2 }
   | AttrSet { setAttrVal $1 }
 
-OptionalBracedArg :: { Maybe NodeSequence }
-OptionalBracedArg
-  : {- empty -} { Nothing }
-  | startBrace MixedContent endBrace { Just $2 }
-
 Space :: { () }
   : lineSpace { () }
   | indent { () }
@@ -163,8 +147,31 @@ lexer :: (Located Tok.Token -> Parser a) -> Parser a
 lexer = (lexToken >>=)
 
 -- | Parse a sequence of intermediate bensalem nodes at the top level
-parseNodes :: Parser (Seq Node)
-parseNodes = unNodeSequence <$> pManyNodes
+pNodes :: Parser (Seq Node)
+pNodes = unNodeSequence <$> pManyNodes
+
+-- | Parse a sequence of bensalem nodes from the given input. These nodes are
+-- assumed to be in the outermost scope of a document (in particular, not in an
+-- indentation or level scope).
+parseNodesTW ::
+  -- | tab width (for error location reporting only)
+  Int ->
+  -- | input name
+  Text ->
+  -- | input
+  Text ->
+  Either ParseError (Seq Node)
+parseNodesTW tw nm inp = evalParser pNodes $ initAlexInput tw nm inp
+
+-- | Parse a sequence of bensalem nodes from the given input with
+-- 'parseNodesTW', with a default tab width of 8
+parseNodes ::
+  -- | input name
+  Text ->
+  -- | input
+  Text ->
+  Either ParseError (Seq Node)
+parseNodes = parseNodesTW 8
 
 ----------------------------------------------------------------
 -- boring partial functions to extract information from tokens

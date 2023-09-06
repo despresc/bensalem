@@ -14,39 +14,43 @@ fromList
      , srcCol = 9
      }
     }
-   , elementArgPresentation = PresentLayout
    , elementName = "layout"
-   , elementAttrs = fromList []
-   , elementArg = fromList
-    [ LineSpace 2
-    , ElementNode
-     ( Element
-      { elementTagPos = SrcSpan
-       { srcSpanName = ""
-       , srcSpanStart = SrcPos
-        { srcOffset = 11
-        , srcLine = 2
-        , srcCol = 3
+   , elementAttrs = NoAttrs
+   , elementScopeContent = LayoutScopeContent
+    ( fromList
+     [ LineEnd
+     , LineSpace 2
+     , ElementNode
+      ( Element
+       { elementTagPos = SrcSpan
+        { srcSpanName = ""
+        , srcSpanStart = SrcPos
+         { srcOffset = 11
+         , srcLine = 2
+         , srcCol = 3
+         }
+        , srcSpanEnd = SrcPos
+         { srcOffset = 18
+         , srcLine = 2
+         , srcCol = 10
+         }
         }
-       , srcSpanEnd = SrcPos
-        { srcOffset = 18
-        , srcLine = 2
-        , srcCol = 10
-        }
+       , elementName = "inner"
+       , elementAttrs = NoAttrs
+       , elementScopeContent = LayoutScopeContent
+        ( fromList
+         [ LineEnd
+         , LineSpace 4
+         , PlainText "content"
+         ]
+        )
        }
-      , elementArgPresentation = PresentLayout
-      , elementName = "inner"
-      , elementAttrs = fromList []
-      , elementArg = fromList
-       [ LineSpace 4
-       , PlainText "content"
-       ]
-      }
-     )
-    , LineEnd
-    , LineSpace 2
-    , PlainText "more"
-    ]
+      )
+     , LineEnd
+     , LineSpace 2
+     , PlainText "more"
+     ]
+    )
    }
   )
  , LineEnd

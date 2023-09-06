@@ -14,11 +14,15 @@ fromList
      , srcCol = 8
      }
     }
-   , elementArgPresentation = PresentLevel
    , elementName = "level"
-   , elementAttrs = fromList []
-   , elementArg = fromList
-    [ PlainText "content" ]
+   , elementAttrs = NoAttrs
+   , elementScopeContent = LevelScopeContent
+    ( fromList
+     [ LineEnd
+     , LineEnd
+     , PlainText "content"
+     ]
+    )
    }
   )
  , LineEnd

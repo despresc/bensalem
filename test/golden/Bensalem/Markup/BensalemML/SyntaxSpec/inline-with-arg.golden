@@ -14,11 +14,73 @@ fromList
      , srcCol = 8
      }
     }
-   , elementArgPresentation = PresentInline
    , elementName = "inline"
-   , elementAttrs = fromList []
-   , elementArg = fromList
-    [ PlainText "{}thing" ]
+   , elementAttrs = NoAttrs
+   , elementScopeContent = InlineScopeContent
+   }
+  )
+ , GroupNode
+  ( Group
+   { groupStart = SrcSpan
+    { srcSpanName = ""
+    , srcSpanStart = SrcPos
+     { srcOffset = 7
+     , srcLine = 1
+     , srcCol = 8
+     }
+    , srcSpanEnd = SrcPos
+     { srcOffset = 8
+     , srcLine = 1
+     , srcCol = 9
+     }
+    }
+   , groupEnd = SrcSpan
+    { srcSpanName = ""
+    , srcSpanStart = SrcPos
+     { srcOffset = 15
+     , srcLine = 1
+     , srcCol = 16
+     }
+    , srcSpanEnd = SrcPos
+     { srcOffset = 16
+     , srcLine = 1
+     , srcCol = 17
+     }
+    }
+   , groupContent = fromList
+    [ GroupNode
+     ( Group
+      { groupStart = SrcSpan
+       { srcSpanName = ""
+       , srcSpanStart = SrcPos
+        { srcOffset = 8
+        , srcLine = 1
+        , srcCol = 9
+        }
+       , srcSpanEnd = SrcPos
+        { srcOffset = 9
+        , srcLine = 1
+        , srcCol = 10
+        }
+       }
+      , groupEnd = SrcSpan
+       { srcSpanName = ""
+       , srcSpanStart = SrcPos
+        { srcOffset = 9
+        , srcLine = 1
+        , srcCol = 10
+        }
+       , srcSpanEnd = SrcPos
+        { srcOffset = 10
+        , srcLine = 1
+        , srcCol = 11
+        }
+       }
+      , groupContent = fromList []
+      }
+     )
+    , PlainText "thing"
+    ]
    }
   )
  , LineEnd

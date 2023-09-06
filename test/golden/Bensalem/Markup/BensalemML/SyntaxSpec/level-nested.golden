@@ -14,53 +14,60 @@ fromList
      , srcCol = 7
      }
     }
-   , elementArgPresentation = PresentLevel
    , elementName = "lvl1"
-   , elementAttrs = fromList []
-   , elementArg = fromList
-    [ ElementNode
-     ( Element
-      { elementTagPos = SrcSpan
-       { srcSpanName = ""
-       , srcSpanStart = SrcPos
-        { srcOffset = 8
-        , srcLine = 3
-        , srcCol = 1
+   , elementAttrs = NoAttrs
+   , elementScopeContent = LevelScopeContent
+    ( fromList
+     [ LineEnd
+     , LineEnd
+     , ElementNode
+      ( Element
+       { elementTagPos = SrcSpan
+        { srcSpanName = ""
+        , srcSpanStart = SrcPos
+         { srcOffset = 8
+         , srcLine = 3
+         , srcCol = 1
+         }
+        , srcSpanEnd = SrcPos
+         { srcOffset = 16
+         , srcLine = 3
+         , srcCol = 9
+         }
         }
-       , srcSpanEnd = SrcPos
-        { srcOffset = 16
-        , srcLine = 3
-        , srcCol = 9
-        }
+       , elementName = "lvl2"
+       , elementAttrs = NoAttrs
+       , elementScopeContent = LevelScopeContent
+        ( fromList
+         [ LineEnd
+         , LineEnd
+         ]
+        )
        }
-      , elementArgPresentation = PresentLevel
-      , elementName = "lvl2"
-      , elementAttrs = fromList []
-      , elementArg = fromList []
-      }
-     )
-    , ElementNode
-     ( Element
-      { elementTagPos = SrcSpan
-       { srcSpanName = ""
-       , srcSpanStart = SrcPos
-        { srcOffset = 18
-        , srcLine = 5
-        , srcCol = 1
+      )
+     , ElementNode
+      ( Element
+       { elementTagPos = SrcSpan
+        { srcSpanName = ""
+        , srcSpanStart = SrcPos
+         { srcOffset = 18
+         , srcLine = 5
+         , srcCol = 1
+         }
+        , srcSpanEnd = SrcPos
+         { srcOffset = 25
+         , srcLine = 5
+         , srcCol = 8
+         }
         }
-       , srcSpanEnd = SrcPos
-        { srcOffset = 25
-        , srcLine = 5
-        , srcCol = 8
-        }
+       , elementName = "lvl3"
+       , elementAttrs = NoAttrs
+       , elementScopeContent = LevelScopeContent
+        ( fromList [] )
        }
-      , elementArgPresentation = PresentLevel
-      , elementName = "lvl3"
-      , elementAttrs = fromList []
-      , elementArg = fromList []
-      }
-     )
-    ]
+      )
+     ]
+    )
    }
   )
  , LineEnd

@@ -14,71 +14,78 @@ fromList
      , srcCol = 11
      }
     }
-   , elementArgPresentation = PresentInline
    , elementName = "inlineelt"
-   , elementAttrs = fromList
-    [ Attr
-     ( SrcSpan
-      { srcSpanName = ""
-      , srcSpanStart = SrcPos
-       { srcOffset = 11
-       , srcLine = 1
-       , srcCol = 12
-       }
-      , srcSpanEnd = SrcPos
-       { srcOffset = 13
-       , srcLine = 1
-       , srcCol = 14
-       }
-      }
-     ) "a1"
-     ( AttrValMarkup
-      ( fromList
-       [ PlainText "thing" ]
-      )
-     )
-    , Attr
-     ( SrcSpan
-      { srcSpanName = ""
-      , srcSpanStart = SrcPos
-       { srcOffset = 22
-       , srcLine = 1
-       , srcCol = 23
-       }
-      , srcSpanEnd = SrcPos
-       { srcOffset = 24
-       , srcLine = 1
-       , srcCol = 25
-       }
-      }
-     ) "a2"
-     ( AttrValSet
-      ( fromList
-       [ Attr
-        ( SrcSpan
-         { srcSpanName = ""
-         , srcSpanStart = SrcPos
-          { srcOffset = 26
-          , srcLine = 1
-          , srcCol = 27
-          }
-         , srcSpanEnd = SrcPos
-          { srcOffset = 28
-          , srcLine = 1
-          , srcCol = 29
-          }
+   , elementAttrs = Attrs
+    ( fromList
+     [
+      ( Located
+       { locatedSpan = SrcSpan
+        { srcSpanName = ""
+        , srcSpanStart = SrcPos
+         { srcOffset = 11
+         , srcLine = 1
+         , srcCol = 12
          }
-        ) "a3"
-        ( AttrValMarkup
-         ( fromList
-          [ PlainText "x" ]
-         )
-        )
-       ]
+        , srcSpanEnd = SrcPos
+         { srcOffset = 13
+         , srcLine = 1
+         , srcCol = 14
+         }
+        }
+       , locatedVal = "a1"
+       }
+      , BracedAttrVal
+       ( fromList
+        [ PlainText "thing" ]
+       )
       )
-     )
-    ]
-   , elementArg = fromList []
+     ,
+      ( Located
+       { locatedSpan = SrcSpan
+        { srcSpanName = ""
+        , srcSpanStart = SrcPos
+         { srcOffset = 22
+         , srcLine = 1
+         , srcCol = 23
+         }
+        , srcSpanEnd = SrcPos
+         { srcOffset = 24
+         , srcLine = 1
+         , srcCol = 25
+         }
+        }
+       , locatedVal = "a2"
+       }
+      , SetAttrVal
+       ( fromList
+        [
+         ( Located
+          { locatedSpan = SrcSpan
+           { srcSpanName = ""
+           , srcSpanStart = SrcPos
+            { srcOffset = 26
+            , srcLine = 1
+            , srcCol = 27
+            }
+           , srcSpanEnd = SrcPos
+            { srcOffset = 28
+            , srcLine = 1
+            , srcCol = 29
+            }
+           }
+          , locatedVal = "a3"
+          }
+         , BracedAttrVal
+          ( fromList
+           [ PlainText "x" ]
+          )
+         )
+        ]
+       )
+      )
+     ]
+    )
+   , elementScopeContent = InlineScopeContent
    }
   )
  , LineEnd

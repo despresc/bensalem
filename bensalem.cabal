@@ -36,7 +36,6 @@ library
     Bensalem.Markup.BensalemML.Parser
     Bensalem.Markup.BensalemML.ParserDefs
     Bensalem.Markup.BensalemML.Syntax
-    Bensalem.Markup.BensalemML.Syntax.Intermediate
     Bensalem.Markup.BensalemML.Token
 
 test-suite test

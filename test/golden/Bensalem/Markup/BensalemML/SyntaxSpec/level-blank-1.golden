@@ -14,36 +14,44 @@ fromList
      , srcCol = 9
      }
     }
-   , elementArgPresentation = PresentLevel
    , elementName = "levtag"
-   , elementAttrs = fromList []
-   , elementArg = fromList
-    [ LineSpace 2
-    , ElementNode
-     ( Element
-      { elementTagPos = SrcSpan
-       { srcSpanName = ""
-       , srcSpanStart = SrcPos
-        { srcOffset = 12
-        , srcLine = 3
-        , srcCol = 3
+   , elementAttrs = NoAttrs
+   , elementScopeContent = LevelScopeContent
+    ( fromList
+     [ LineEnd
+     , LineEnd
+     , LineSpace 2
+     , ElementNode
+      ( Element
+       { elementTagPos = SrcSpan
+        { srcSpanName = ""
+        , srcSpanStart = SrcPos
+         { srcOffset = 12
+         , srcLine = 3
+         , srcCol = 3
+         }
+        , srcSpanEnd = SrcPos
+         { srcOffset = 20
+         , srcLine = 3
+         , srcCol = 11
+         }
         }
-       , srcSpanEnd = SrcPos
-        { srcOffset = 20
-        , srcLine = 3
-        , srcCol = 11
-        }
+       , elementName = "layout"
+       , elementAttrs = NoAttrs
+       , elementScopeContent = LayoutScopeContent
+        ( fromList
+         [ LineEnd
+         , LineSpace 4
+         , PlainText "lc"
+         ]
+        )
        }
-      , elementArgPresentation = PresentLayout
-      , elementName = "layout"
-      , elementAttrs = fromList []
-      , elementArg = fromList
-       [ LineSpace 4
-       , PlainText "lc"
-       ]
-      }
-     )
-    ]
+      )
+     , LineEnd
+     , LineEnd
+     , LineSpace 1
+     ]
+    )
    }
   )
  , ElementNode
@@ -61,10 +69,10 @@ fromList
      , srcCol = 11
      }
     }
-   , elementArgPresentation = PresentLevel
    , elementName = "levtag2"
-   , elementAttrs = fromList []
-   , elementArg = fromList []
+   , elementAttrs = NoAttrs
+   , elementScopeContent = LevelScopeContent
+    ( fromList [] )
    }
   )
  , LineEnd
