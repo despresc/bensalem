@@ -18,7 +18,8 @@ fromList
    , elementName = "levtag"
    , elementAttrs = fromList []
    , elementArg = fromList
-    [ ElementNode
+    [ LineSpace 2
+    , ElementNode
      ( Element
       { elementTagPos = SrcSpan
        { srcSpanName = ""

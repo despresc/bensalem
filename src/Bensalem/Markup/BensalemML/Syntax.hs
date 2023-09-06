@@ -35,7 +35,6 @@ import Bensalem.Markup.BensalemML.Syntax.Intermediate (Presentation (..))
 import qualified Bensalem.Markup.BensalemML.Syntax.Intermediate as SI
 import Bensalem.Markup.BensalemML.Token (EltName)
 import Data.Sequence (Seq (..))
-import qualified Data.Sequence as Seq
 import Data.Text (Text)
 
 -- | Parse a sequence of bensalem nodes from the given input. These nodes are
@@ -137,13 +136,6 @@ fromIntermediateNodes = go mempty
     convertContent _ SI.NoArg = pure mempty
     convertContent p (SI.Arg x) = handleContent p x
 
-    isSpaceNode SI.LineEnd = True
-    isSpaceNode (SI.LineSpace _) = True
-    isSpaceNode _ = False
-
-    stripBeginSpaces = Seq.dropWhileL isSpaceNode
-    stripEndSpaces = Seq.dropWhileR isSpaceNode
-
     -- from the front, drop a single blank line
     stripBeginBlank (SI.LineSpace _ :<| SI.LineEnd :<| nodes) = nodes
     stripBeginBlank (SI.LineEnd :<| nodes) = nodes
@@ -159,10 +151,14 @@ fromIntermediateNodes = go mempty
     stripEndBlank (nodes :|> SI.LineEnd) = nodes
     stripEndBlank nodes = nodes
 
+    stripEndBlanks (nodes :|> SI.LineEnd :|> SI.LineSpace _) = stripEndBlanks nodes
+    stripEndBlanks (nodes :|> SI.LineEnd) = stripEndBlanks nodes
+    stripEndBlanks nodes = nodes
+
     handleContent PresentInline = convertBracedContent
     -- TODO: I think this is a little too defensive - as a consequence of our
     -- lexing strategy there never be any trailing blanks in a layout argument.
     handleContent PresentLayout = fromIntermediateNodes . stripBeginBlanks . stripEndBlank
-    handleContent PresentLevel = fromIntermediateNodes . stripBeginSpaces . stripEndSpaces
+    handleContent PresentLevel = fromIntermediateNodes . stripBeginBlanks . stripEndBlanks
 
     convertBracedContent = fromIntermediateNodes . stripBeginBlank . stripEndBlank
