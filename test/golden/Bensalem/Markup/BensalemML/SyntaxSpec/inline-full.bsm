@@ -1,1 +1,1 @@
-@inline[attr1={thing}]{argument}
+\inline[attr1={thing}]{argument}

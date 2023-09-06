@@ -1,12 +1,12 @@
 (0,1,1)(5,1,6) LevelTag 1 "lvl"
-(5,1,6)(9,2,4) Blanks "\n   "
+(5,1,6)(9,2,4) Indent "\n   "
 (9,2,4)(14,2,9) LayoutTag "tag"
 (14,2,9)(15,2,10) LineSpace 1
 (15,2,10)(22,2,17) LayoutTag "other"
 (22,2,17)(22,2,17) EndImplicitScope
 (22,2,17)(22,2,17) EndImplicitScope
-(22,2,17)(25,4,2) Blanks "\n\n "
+(22,2,17)(25,4,2) Indent "\n\n "
 (25,4,2)(36,4,13) LevelTag 2 "otherlvl"
 (36,4,13)(36,4,13) EndImplicitScope
 (36,4,13)(36,4,13) EndImplicitScope
-(36,4,13)(37,5,1) Blanks "\n"
+(36,4,13)(37,5,1) Indent "\n"

@@ -13,68 +13,115 @@ import Bensalem.Markup.BensalemML.Token
 import qualified Data.Text as T
 }
 
-$plainPlainText = $printable # [ \{ \} \  \n @ ]
-$afterTagPlainText = $printable # [ \[ \] \{ \} = \ \n @ ]
+-- Characters that are significant in plain text
+$plainSignificant = [ \{ \} \  \n \\ ]
 
-$identish = $printable # [ \[ \] \{ \} \  \n ]
-$inlineStarter = $identish # [@ \; \# &]
+-- Insignificant characters in plain text
+$plainPlainText = $printable # $plainSignificant
 
-$attrKeyish = $printable # [ \[ \] \{ \} \  \n = ]
--- happens to be the same for now
-$attrKeyStarter = $attrKeyish
+-- Characters that can be escaped
+$escapeChars = [ \\ \{ \} \[ \] ]
 
-@blanks = (\n | \ )*
-@indent = \n @blanks
+-- Characters that are significant after a backslash but (roughly) wouldn't be
+-- the start of an inline tag
+$notInlineStarterButSig = [ $escapeChars [ \% \# \& ] ]
+
+-- Characters that (very roughly) might start an inline tag
+$tagStarter = $plainPlainText # $notInlineStarterButSig
+
+-- Characters that (again, very roughly) could continue a tag
+$tagContinue = $tagStarter
+
+-- Characters that, when they occur immediately after a tag, are plain text
+$afterTagPlainText = $plainPlainText # [ \[ ]
+
+-- Characters that might start an attribute key
+$attrKeyStarter = $tagStarter # [ = ]
+
+-- Characters that might continue an attribute key. This happens to be the same
+-- as $attrKeyStarter for the moment
+$attrKeyContinue = $attrKeyStarter
+
+-- A sequence of any amount of spaces or newlines
+@anyWhitespace = (\n | \ )*
+
+-- Any whitespace following a newline (with that leading newline) though of
+-- course only the terminal run of line space is really significant for layout
+-- purposes
+@indent = \n @anyWhitespace
+
+-- A full tag name
+@tagName = $tagStarter $tagContinue*
+
+-- A full attribute key
+@attrKey = $attrKeyStarter $attrKeyContinue*
 
 tokens :-
 
 <0> {
   -- we are a little strict here. if there is no white space we recover in
   -- lexToken.
-  (\n | \ )+ { textTok Blanks `thenCode` plainText }
+  (\n | \ )+ { textTok Indent `thenCode` plainText }
 }
 
 <plainText> {
   $plainPlainText+ { textTok PlainText }
   \ + { \toklen spn _ -> pure $ Located spn $ LineSpace toklen }
-  @indent { doBlanks }
+  @indent { doIndent }
 
   "{" { doStartBraceGroup plainText }
   "}" { doEndBraceGroup }
 
-  "@@" { plainTok LiteralAt }
-  "@;;" .* { doLineComment }
+  "\\" { plainTok (TokenEscape EscapeBackslash) }
+  "\{" { plainTok (TokenEscape EscapeOpenBrace) }
+  "\}" { plainTok (TokenEscape EscapeCloseBrace) }
+  "\[" { plainTok (TokenEscape EscapeOpenBracket) }
+  "\]" { plainTok (TokenEscape EscapeCloseBracket) }
+  "\%%" .* { doLineComment }
 
-  "@" $inlineStarter $identish* { doInlineTag `thenCode` afterTag }
-  "@&" $identish+ { doLayoutTag plainText `thenCode` afterTag }
-  "@" "#"+ $identish+ { doLevelTag plainText `thenCode` afterTag }
+  \\ @tagName { doInlineTag `thenCode` afterTag }
+  \\& @tagName { doLayoutTag plainText `thenCode` afterTag }
+  "\#" "#"* @tagName { doLevelTag plainText `thenCode` afterTag }
 }
 
 -- sadly repetitive - I could probably do some kind of recovery trick in
 -- lexToken, but I'd rather not right now
+
+-- TODO: I'm being quite silly - I think I can in fact do a <plainText,afterTag>
+-- block of rules - I just have to query the lexer state and save the exact
+-- start code I want. Unsure why I thought I needed to do it this way. Now that
+-- I think about it, I can't really do that with the level and layout tags,
+-- because I want them to restore plainText on scope completion. Oh, but then
+-- that's fine, because they just unconditionally restore plainText. Maybe I
+-- should just keep what the codes are in the lexer state...
 
 <afterTag> {
   "[" { doStartAttrSet plainText `thenCode` attrSet }
 
   $afterTagPlainText+ { textTok PlainText `thenCode` plainText }
   \ + { (\toklen spn _ -> pure $ Located spn $ LineSpace toklen) `thenCode` plainText }
-  @indent { doBlanks `thenCode` plainText }
+  @indent { doIndent `thenCode` plainText }
+
   "{" { doStartBraceGroup plainText `thenCode` plainText }
   "}" { doEndBraceGroup `thenCode` plainText }
 
-  "@@" { plainTok LiteralAt `thenCode` plainText }
-  "@;;" .* { doLineComment `thenCode` plainText }
+  "\\" { plainTok (TokenEscape EscapeBackslash) `thenCode` plainText }
+  "\{" { plainTok (TokenEscape EscapeOpenBrace) `thenCode` plainText }
+  "\}" { plainTok (TokenEscape EscapeCloseBrace) `thenCode` plainText }
+  "\[" { plainTok (TokenEscape EscapeOpenBracket) `thenCode` plainText }
+  "\]" { plainTok (TokenEscape EscapeCloseBracket) `thenCode` plainText }
+  "\%%" .* { doLineComment }
 
-  "@" $inlineStarter $identish* { doInlineTag `thenCode` afterTag }
-  "@&" $identish+ { doLayoutTag plainText `thenCode` afterTag }
-  "@" "#"+ $identish+ { doLevelTag plainText `thenCode` afterTag }
+  \\ @tagName { doInlineTag }
+  \\& @tagName { doLayoutTag plainText  }
+  "\#" "#"* @tagName { doLevelTag plainText }
 }
 
 -- observe that we don't need to lex '}' here, as that's implicitly handled by
 -- plainTextMidLine - when we get to the end brace we simply restore the correct
 -- start code
 
--- we also use doBlanks, which has the effect of created some space inside the
+-- we also use doIndent, which has the effect of created some space inside the
 -- attr set that needs to be stripped out by the parser. the issue is that we
 -- can't simply skip line endings, because we need to enforce a lack of
 -- deindents inside attribute sets, and I don't think alex allows a "monadic
@@ -83,13 +130,13 @@ tokens :-
 
 <attrSet> {
   -- TODO: should really add some checking here!
-  $attrKeyStarter $attrKeyish* { textTok AttrKey }
+  @attrKey { textTok AttrKey }
   "=" { plainTok Equals }
   "{" { doStartBraceGroup attrSet `thenCode` plainText }
   "[" { doStartAttrSet attrSet }
   "]" { doEndAttrSet }
   \ + ;
-  @indent { doBlanks }
+  @indent { doIndent }
 }
 
 {

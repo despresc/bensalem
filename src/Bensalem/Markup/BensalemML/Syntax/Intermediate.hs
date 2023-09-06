@@ -24,7 +24,8 @@ module Bensalem.Markup.BensalemML.Syntax.Intermediate
     Attr,
     text,
     lineSpace,
-    blanks,
+    indent,
+    escape,
     inlineComment,
     elementNode,
     element,
@@ -39,7 +40,8 @@ import Bensalem.Markup.BensalemML.ParserDefs
   ( Located (..),
     SrcSpan (..),
   )
-import Bensalem.Markup.BensalemML.Token (EltName)
+import Bensalem.Markup.BensalemML.Token (EltName, Escape)
+import qualified Bensalem.Markup.BensalemML.Token as Tok
 import Data.Sequence (Seq (..))
 import qualified Data.Sequence as Seq
 import Data.Text (Text)
@@ -136,8 +138,8 @@ text t = singleNode $ PlainText t
 
 -- | Unsafely construct a 'NodesBuilder' sequence from 'Text' consisting of
 -- newlines and spaces
-blanks :: Located Text -> NodeSequence
-blanks (Located _ t) = NodeSequence $ Seq.fromList chunks
+indent :: Located Text -> NodeSequence
+indent (Located _ t) = NodeSequence $ Seq.fromList chunks
   where
     -- slightly different behaviour from Text.lines, since that function doesn't
     -- handle trailing newlines the way it's needed to here
@@ -152,6 +154,9 @@ blanks (Located _ t) = NodeSequence $ Seq.fromList chunks
       | otherwise = [LineEnd, LineSpace n]
       where
         n = T.length x
+
+escape :: Located Escape -> NodeSequence
+escape (Located _ e) = singleNode $ PlainText $ Tok.escapeText e
 
 -- | Unsafely construct a 'NodesBuilder' sequence representing a run of single
 -- spaces.

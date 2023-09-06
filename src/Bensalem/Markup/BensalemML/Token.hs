@@ -17,8 +17,8 @@ import qualified Data.Text as T
 data Token
   = -- | text other than a line ending, space, or special character
     PlainText !Text
-  | -- | zero or more blank lines, then zero or more spaces
-    Blanks !Text
+  | -- | a single line ending, then zero or more line endings and spaces
+    Indent !Text
   | -- | spaces not at the beginning of a line
     LineSpace !Int
   | -- | @\@;;comment text@
@@ -29,8 +29,8 @@ data Token
     LevelTag !Int !EltName
   | -- | @\@&tagname@
     LayoutTag !EltName
-  | -- | @\@\@@
-    LiteralAt
+  | -- | an escape sequence
+    TokenEscape !Escape
   | -- | @{@
     StartBraceGroup
   | -- | @}@
@@ -51,16 +51,24 @@ data Token
     TokenEOF
   deriving (Eq, Ord, Show)
 
+data Escape
+  = EscapeBackslash
+  | EscapeOpenBrace
+  | EscapeCloseBrace
+  | EscapeOpenBracket
+  | EscapeCloseBracket
+  deriving (Eq, Ord, Show)
+
 -- | Render a single token back to 'Text'
 renderToken :: Token -> Text
 renderToken (PlainText t) = t
-renderToken (Blanks ls) = ls
+renderToken (Indent ls) = ls
 renderToken (LineSpace n) = T.replicate n " "
 renderToken (LineComment t) = "@;;" <> t
 renderToken (InlineTag t) = "@" <> t
 renderToken (LevelTag n t) = "@" <> T.replicate n "#" <> t
 renderToken (LayoutTag t) = "@&" <> t
-renderToken LiteralAt = "@@"
+renderToken (TokenEscape e) = "\\" <> escapeText e
 renderToken StartBraceGroup = "{"
 renderToken EndBraceGroup = "}"
 renderToken StartAttrSet = "["
@@ -69,6 +77,14 @@ renderToken Equals = "="
 renderToken (AttrKey k) = k
 renderToken EndImplicitScope = ""
 renderToken TokenEOF = ""
+
+-- | Render the text that a particular escape sequence represents
+escapeText :: Escape -> Text
+escapeText EscapeBackslash = "\\"
+escapeText EscapeOpenBrace = "{"
+escapeText EscapeCloseBrace = "}"
+escapeText EscapeOpenBracket = "["
+escapeText EscapeCloseBracket = "]"
 
 -- | The line that a 'BlankLine' or 'Indent' token starts, or the line
 -- on which a 'Comment' ends

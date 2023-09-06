@@ -1,22 +1,28 @@
-(0,1,1)(2,1,3) LiteralAt
-(2,1,3)(3,2,1) Blanks "\n"
-(3,2,1)(5,2,3) PlainText "[]"
-(5,2,3)(6,3,1) Blanks "\n"
-(6,3,1)(7,3,2) PlainText "="
-(7,3,2)(8,4,1) Blanks "\n"
-(8,4,1)(9,4,2) StartBraceGroup
-(9,4,2)(10,4,3) EndBraceGroup
-(10,4,3)(11,5,1) Blanks "\n"
-(11,5,1)(21,5,11) LineComment "comment"
-(21,5,11)(22,6,1) Blanks "\n"
-(22,6,1)(29,6,8) InlineTag "inline"
-(29,6,8)(30,7,1) Blanks "\n"
-(30,7,1)(38,7,9) LayoutTag "layout"
-(38,7,9)(38,7,9) EndImplicitScope
-(38,7,9)(39,8,1) Blanks "\n"
-(39,8,1)(47,8,9) LevelTag 1 "level1"
-(47,8,9)(48,9,1) Blanks "\n"
-(48,9,1)(57,9,10) LevelTag 2 "level2"
-(57,9,10)(57,9,10) EndImplicitScope
-(57,9,10)(57,9,10) EndImplicitScope
-(57,9,10)(58,10,1) Blanks "\n"
+(0,1,1)(2,1,3) TokenEscape EscapeBackslash
+(2,1,3)(3,2,1) Indent "\n"
+(3,2,1)(5,2,3) TokenEscape EscapeOpenBrace
+(5,2,3)(7,2,5) TokenEscape EscapeCloseBrace
+(7,2,5)(8,3,1) Indent "\n"
+(8,3,1)(10,3,3) TokenEscape EscapeOpenBracket
+(10,3,3)(12,3,5) TokenEscape EscapeCloseBracket
+(12,3,5)(13,4,1) Indent "\n"
+(13,4,1)(15,4,3) PlainText "[]"
+(15,4,3)(16,5,1) Indent "\n"
+(16,5,1)(17,5,2) PlainText "="
+(17,5,2)(18,6,1) Indent "\n"
+(18,6,1)(19,6,2) StartBraceGroup
+(19,6,2)(20,6,3) EndBraceGroup
+(20,6,3)(21,7,1) Indent "\n"
+(21,7,1)(31,7,11) LineComment "comment"
+(31,7,11)(32,8,1) Indent "\n"
+(32,8,1)(39,8,8) InlineTag "inline"
+(39,8,8)(40,9,1) Indent "\n"
+(40,9,1)(48,9,9) LayoutTag "layout"
+(48,9,9)(48,9,9) EndImplicitScope
+(48,9,9)(49,10,1) Indent "\n"
+(49,10,1)(57,10,9) LevelTag 1 "level1"
+(57,10,9)(58,11,1) Indent "\n"
+(58,11,1)(67,11,10) LevelTag 2 "level2"
+(67,11,10)(67,11,10) EndImplicitScope
+(67,11,10)(67,11,10) EndImplicitScope
+(67,11,10)(68,12,1) Indent "\n"

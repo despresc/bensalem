@@ -19,7 +19,7 @@ module Bensalem.Markup.BensalemML.LexerActions
     doEndBraceGroup,
     doStartAttrSet,
     doEndAttrSet,
-    doBlanks,
+    doIndent,
     doLineComment,
     doEOF,
   )
@@ -333,8 +333,8 @@ moment.
 
 -}
 
-doBlanks :: AlexAction
-doBlanks _ sp t = do
+doIndent :: AlexAction
+doIndent _ sp t = do
   -- if we're about to hit the end of input, then we need to close every level
   -- and layout scope.
   let willBeClosedEOF scope = case scopeType scope of
@@ -359,7 +359,7 @@ doBlanks _ sp t = do
         | T.null currInput = willBeClosedEOF
         | otherwise = willBeClosedOther
   toksDL <- gatherScopesDL willBeClosed $ pure ()
-  let (emitTok, pending) = unsafeNonEmptyDL $ toksDL . (Located sp (Tok.Blanks t) :)
+  let (emitTok, pending) = unsafeNonEmptyDL $ toksDL . (Located sp (Tok.Indent t) :)
   setPendingTokens pending
   pure emitTok
 

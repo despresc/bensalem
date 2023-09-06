@@ -46,10 +46,10 @@ parsed either as the start of an argument, or as insignificant text. The shift
 %token
   text { Located _ (Tok.PlainText _) }
   equals { Located _ Tok.Equals }
-  blanks { Located _ (Tok.Blanks _) }
+  indent { Located _ (Tok.Indent _) }
   lineSpace { Located _ (Tok.LineSpace _) }
   inlineComment { Located _ (Tok.LineComment _) }
-  literalAt { Located _ Tok.LiteralAt }
+  escape { Located _ (Tok.TokenEscape _) }
   inlineTag { Located _ (Tok.InlineTag _) }
   levelTag { Located _ (Tok.LevelTag _ _) }
   layoutTag { Located _ (Tok.LayoutTag _) }
@@ -68,9 +68,9 @@ MixedContentNode :: { NodeSequence }
 --  | equals { text "=" }
 --  | startAttrSet { text "[" }
 --  | endAttrSet { text "]" }
-  | literalAt { text "@" }
+  | escape { escape (getEscape $1) }
   | lineSpace { lineSpace (getLineSpace $1) }
-  | blanks { blanks (getBlanks $1) }
+  | indent { indent (getIndent $1) }
   | InsigBracedGroup { $1 }
   | ElementNode { $1 }
   | inlineComment { inlineComment (getInlineComment $1) }
@@ -147,7 +147,7 @@ OptionalBracedArg
 
 Space :: { () }
   : lineSpace { () }
-  | blanks { () }
+  | indent { () }
   | inlineComment { () }
 
 Spaces :: { () }
@@ -181,9 +181,9 @@ getLineSpace (Located x (Tok.LineSpace n)) = Located x n
 getLineSpace _ = error "Internal error"
 
 -- | Partial function that matches an escape sequence
-getBlanks :: Located Tok.Token -> Located Text
-getBlanks (Located x (Tok.Blanks t)) = Located x t
-getBlanks _ = error "Internal error"
+getIndent :: Located Tok.Token -> Located Text
+getIndent (Located x (Tok.Indent t)) = Located x t
+getIndent _ = error "Internal error"
 
 -- | Partial function that matches an inline tag
 getInlineTag :: Located Tok.Token -> Located Tok.EltName
@@ -209,4 +209,10 @@ getLayoutTag _ = error "Internal error"
 getAttrKey :: Located Tok.Token -> Located Text
 getAttrKey (Located x (Tok.AttrKey k)) = Located x k
 getAttrKey _ = error "Internal error"
+
+-- | Partial function that matches an attribute key
+getEscape :: Located Tok.Token -> Located Tok.Escape
+getEscape (Located x (Tok.TokenEscape e)) = Located x e
+getEscape _ = error "Internal error"
+
 }
