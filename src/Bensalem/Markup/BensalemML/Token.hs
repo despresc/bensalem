@@ -98,6 +98,8 @@ type Indent = Int
 -- characters, dashes, and underscores
 type EltName = Text
 
+type AttrKey = Text
+
 -- | Tests whether or not the 'Text' is a valid 'EltName'. Presently, a valid
 -- 'EltName' is simply a string of alphanumeric characters, dashes, and
 -- underscores.
@@ -107,3 +109,6 @@ validEltName t
   | otherwise = Nothing
   where
     isValidChar c = isAlphaNum c || c == '-' || c == '_'
+
+validAttrKey :: Text -> Maybe AttrKey
+validAttrKey = validEltName

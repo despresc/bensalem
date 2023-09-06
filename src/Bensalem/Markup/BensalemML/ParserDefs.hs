@@ -158,6 +158,8 @@ data ParseError
 data LexError
   = -- | lexically invalid element name
     InvalidEltName Text
+  | -- | lexically invalid attribute key
+    InvalidAttrKey Text
   | -- | a token could not be parsed
     NoToken
   | -- | a start of brace group was not matched by an end of brace group (span

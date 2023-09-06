@@ -15,6 +15,7 @@ module Bensalem.Markup.BensalemML.LexerActions
     doInlineTag,
     doLayoutTag,
     doLevelTag,
+    doAttrKey,
     doStartBraceGroup,
     doEndBraceGroup,
     doStartAttrSet,
@@ -180,6 +181,12 @@ doLevelTag restoreCode _ sp t =
     errSp = sp {srcSpanStart = spStart {srcCol = srcCol spStart + level}}
       where
         spStart = srcSpanStart sp
+
+doAttrKey :: AlexAction
+doAttrKey _ sp t =
+  case Tok.validAttrKey t of
+    Just k -> pure $ Located sp $ Tok.AttrKey k
+    Nothing -> throwLexError sp $ InvalidAttrKey t
 
 -- | Handle the start of a braced group. The start of a braced group opens a
 -- braced group scope.

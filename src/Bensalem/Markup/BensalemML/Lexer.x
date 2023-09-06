@@ -130,7 +130,7 @@ tokens :-
 
 <attrSet> {
   -- TODO: should really add some checking here!
-  @attrKey { textTok AttrKey }
+  @attrKey { doAttrKey }
   "=" { plainTok Equals }
   "{" { doStartBraceGroup attrSet `thenCode` plainText }
   "[" { doStartAttrSet attrSet }
