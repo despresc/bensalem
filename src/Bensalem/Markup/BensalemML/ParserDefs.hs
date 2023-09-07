@@ -20,6 +20,7 @@ module Bensalem.Markup.BensalemML.ParserDefs
     throwLexError,
     throwParseError,
     throwParseErrorNil,
+    VariableVerbData (..),
 
     -- * Source positions
     SrcPos (..),
@@ -107,8 +108,20 @@ data ParseState = ParseState
     --   deindent
     parseStateLayoutDepth :: !Int,
     -- | the current stack of scopes
-    parseStateScopeStack :: ![Scope]
+    parseStateScopeStack :: ![Scope],
+    -- | this could be a scope, but having it separate saves us the trouble of
+    -- explicitly defining its interaction with other scopes (these would be all
+    -- errors that would never happen due to our lexing strategy). granted,
+    -- still a bit of a hack.
+    parseStateVariableVerbData :: !VariableVerbData
   }
+  deriving (Eq, Ord, Show)
+
+-- | Data related to the start of a variable verbatim span
+data VariableVerbData
+  = NoVariableVerbData
+  | -- | the span of the start token, and its entire length
+    VariableVerbData !SrcSpan !Int
   deriving (Eq, Ord, Show)
 
 initParseState :: AlexInput -> ParseState
@@ -118,7 +131,8 @@ initParseState ai =
       parseStateInput = ai,
       parseStatePendingTokens = [],
       parseStateLayoutDepth = 0,
-      parseStateScopeStack = []
+      parseStateScopeStack = [],
+      parseStateVariableVerbData = NoVariableVerbData
     }
 
 data Scope = Scope
@@ -155,6 +169,10 @@ data ParseError
 -- input. The 'SrcSpan' of the remaining errors is the span of the
 -- partially-recognized input (e.g., the span of the 'UnmatchedEndBraceGroup' is
 -- the source position of the end of brace group).
+
+-- TODO: a lot of these errors could be unified - e.g. the unmatched errors or
+-- mismatched errors could all be ScopeMismatch errors and simply report the
+-- scope and one of an enum of things that caused the mismatch
 data LexError
   = -- | lexically invalid element name
     InvalidEltName Text
@@ -190,6 +208,11 @@ data LexError
     DeIndentInBracedGroup SrcSpan
   | -- | a de-indent occurred in attribute set (span of start of attribute set)
     DeIndentInAttrSet SrcSpan
+  | -- | a de-indent occurred in variable verbatim span
+    DeIndentInVariableVerbatimSpan SrcSpan
+  | -- | should never happen - we were in a variable span but did not have data
+    -- about its start
+    VariableVerbDataUnavailable
   deriving (Eq, Ord, Show)
 
 -- | A position in a 'Char' stream. The 'srcOffset' is the index of the position

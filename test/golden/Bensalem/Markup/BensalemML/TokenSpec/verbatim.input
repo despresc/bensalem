@@ -1,0 +1,4 @@
+\```|Really, anything can appear in here, like \element[]{} and \%%comment
+  and \\\{\}\[\] and \#lvl and even lexically invalid things like \ escaped space
+|```/
+and we go back to text afterward \element[]{}

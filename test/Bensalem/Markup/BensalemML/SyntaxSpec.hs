@@ -25,7 +25,8 @@ spec =
       goldParse "level-nested" "parses nested level elements",
       goldParse
         "level-blank-1"
-        "parses whitespace before level tag that closes a layout and level tag at once"
+        "parses whitespace before level tag that closes a layout and level tag at once",
+      goldParse "verbatim" "parses combinations of verbatims properly"
     ]
   where
     base = "test/golden/Bensalem/Markup/BensalemML/SyntaxSpec/"

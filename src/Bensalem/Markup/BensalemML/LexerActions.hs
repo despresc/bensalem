@@ -15,6 +15,9 @@ module Bensalem.Markup.BensalemML.LexerActions
     doInlineTag,
     doLayoutTag,
     doLevelTag,
+    doVariableVerbStart,
+    doVariableVerbIndent,
+    checkVariableVerbEnd,
     doAttrKey,
     doStartBraceGroup,
     doEndBraceGroup,
@@ -71,6 +74,13 @@ conVirtual :: SrcSpan -> Located Token
 conVirtual sp = Located sp' Tok.EndImplicitScope
   where
     sp' = sp {srcSpanEnd = srcSpanStart sp}
+
+getThrowVariableVerbData :: SrcSpan -> Parser (SrcSpan, Int)
+getThrowVariableVerbData sp = do
+  vd <- gets parseStateVariableVerbData
+  case vd of
+    NoVariableVerbData -> throwLexError sp VariableVerbDataUnavailable
+    VariableVerbData x y -> pure (x, y)
 
 data ScopePop a
   = -- | continue with scope popping
@@ -358,6 +368,33 @@ doIndent _ sp t = do
   let (emitTok, pending) = unsafeNonEmptyDL $ toksDL . (Located sp (Tok.Indent t) :)
   setPendingTokens pending
   pure emitTok
+
+doVariableVerbStart :: AlexAction
+doVariableVerbStart n sp _ = do
+  modify $ \s -> s {parseStateVariableVerbData = VariableVerbData sp n}
+  pure $ Located sp $ Tok.StartVariableVerb n
+
+doVariableVerbIndent :: AlexAction
+doVariableVerbIndent _ sp t = do
+  -- taken from doIndent, though much simplified
+  let incomingColumn = srcCol $ srcSpanEnd sp
+  layoutDepth <- gets parseStateLayoutDepth
+  if incomingColumn <= layoutDepth
+    then do
+      (vp, _) <- getThrowVariableVerbData sp
+      throwLexError sp $ DeIndentInVariableVerbatimSpan vp
+    else pure $ Located sp $ Tok.Indent t
+
+checkVariableVerbEnd ::
+  Int ->
+  AlexAction
+checkVariableVerbEnd transitionCode n sp t = do
+  (_, vstartlen) <- getThrowVariableVerbData sp
+  if vstartlen == n
+    then do
+      setCode transitionCode
+      pure $ Located sp $ Tok.EndVariableVerb n
+    else pure $ Located sp $ Tok.VariableVerbPlainText t
 
 -- | Resolve all pending scopes, throwing a lexer error if there are any pending
 -- braced group or attribute set scopes

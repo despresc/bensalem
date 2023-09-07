@@ -43,6 +43,14 @@ data Token
     Equals
   | -- | a potential attribute key
     AttrKey !Text
+  | -- | @\\`|@, or with more backticks, recording the entire length of the
+    -- token
+    StartVariableVerb !Int
+  | -- | verbatim text other than indentation or line space
+    VariableVerbPlainText !Text
+  | -- | @|`\/@, with a variable number of backticks, recording the entire
+    -- length of the token
+    EndVariableVerb !Int
   | -- | virtual token (zero-width, not appearing explicitly in the source)
     -- denoting the end of content for a level or layout element
     EndImplicitScope
@@ -75,6 +83,9 @@ renderToken StartAttrSet = "["
 renderToken EndAttrSet = "]"
 renderToken Equals = "="
 renderToken (AttrKey k) = k
+renderToken (StartVariableVerb n) = "\\" <> T.replicate (n - 2) "`" <> "|"
+renderToken (VariableVerbPlainText t) = t
+renderToken (EndVariableVerb n) = "|" <> T.replicate (n - 2) "`" <> "/"
 renderToken EndImplicitScope = ""
 renderToken TokenEOF = ""
 

@@ -1,0 +1,67 @@
+fromList
+ [ PlainText "Verbatimsfuse"
+ , LineSpace 1
+ , PlainText "with"
+ , LineSpace 1
+ , PlainText "neighbours"
+ , LineSpace 2
+ , PlainText "like"
+ , LineSpace 1
+ , PlainText "this"
+ , LineEnd
+ , ElementNode
+  ( Element
+   { elementTagPos = SrcSpan
+    { srcSpanName = ""
+    , srcSpanStart = SrcPos
+     { srcOffset = 49
+     , srcLine = 2
+     , srcCol = 1
+     }
+    , srcSpanEnd = SrcPos
+     { srcOffset = 54
+     , srcLine = 2
+     , srcCol = 6
+     }
+    }
+   , elementName = "foo"
+   , elementAttrs = NoAttrs
+   , elementScopeContent = LayoutScopeContent
+    ( fromList
+     [ LineSpace 1
+     , PlainText "indentation"
+     , LineEnd
+     , LineSpace 2
+     , PlainText "works"
+     , LineSpace 1
+     , PlainText "as"
+     , LineSpace 1
+     , PlainText "well"
+     ]
+    )
+   }
+  )
+ , LineEnd
+ , LineEnd
+ , ElementNode
+  ( Element
+   { elementTagPos = SrcSpan
+    { srcSpanName = ""
+    , srcSpanStart = SrcPos
+     { srcOffset = 92
+     , srcLine = 5
+     , srcCol = 1
+     }
+    , srcSpanEnd = SrcPos
+     { srcOffset = 100
+     , srcLine = 5
+     , srcCol = 9
+     }
+    }
+   , elementName = "testinl"
+   , elementAttrs = NoAttrs
+   , elementScopeContent = InlineScopeContent
+   }
+  )
+ , LineEnd
+ ]

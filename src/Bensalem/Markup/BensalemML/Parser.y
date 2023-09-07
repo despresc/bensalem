@@ -52,6 +52,9 @@ import Data.Sequence (Seq)
   endBrace { Located _ Tok.EndBraceGroup }
   startAttrSet { Located _ Tok.StartAttrSet }
   endAttrSet { Located _ Tok.EndAttrSet }
+  startVariableVerb { Located _ (Tok.StartVariableVerb _) }
+  variableVerbPlainText { Located _ (Tok.VariableVerbPlainText _) }
+  endVariableVerb { Located _ (Tok.EndVariableVerb _) }
   attrKey { Located _ (Tok.AttrKey _) }
   endImplicitScope { Located _ Tok.EndImplicitScope }
 
@@ -59,12 +62,13 @@ import Data.Sequence (Seq)
 
 -- a top-level node
 MixedContentNode :: { NodeSequence }
-  : text { text (locatedVal $ getPlainText $1) }
+  : text { text (getPlainText $1) }
   | escape { escape (getEscape $1) }
   | lineSpace { lineSpace (getLineSpace $1) }
   | indent { indent (getIndent $1) }
   | GroupNode { $1 }
   | ElementNode { $1 }
+  | VariableVerbSpan { $1 }
   | inlineComment { inlineComment (getInlineComment $1) }
 
 MixedContent :: { NodeSequence }
@@ -74,6 +78,25 @@ MixedContent :: { NodeSequence }
 MixedContent1 :: { NodeSequence }
   : MixedContentNode { $1 }
   | MixedContent1 MixedContentNode { $1 <> $2 }
+
+VariableVerbSpan :: { NodeSequence }
+VariableVerbSpan
+  : startVariableVerb VariableVerbContent endVariableVerb { $2 }
+
+VariableVerbContent :: { NodeSequence }
+  : {- empty -} { mempty }
+  | VariableVerbContent1 { $1 }
+
+VariableVerbContent1 :: { NodeSequence }
+VariableVerbContent1
+  : VariableVerbPart { $1 }
+  | VariableVerbContent1 VariableVerbPart { $1 <> $2 }
+
+VariableVerbPart :: { NodeSequence }
+VariableVerbPart
+  : variableVerbPlainText { text (getVariableVerbPlainText $1) }
+  | lineSpace { lineSpace (getLineSpace $1) }
+  | indent { indent (getIndent $1) }
 
 GroupNode :: { NodeSequence }
 GroupNode
@@ -178,8 +201,8 @@ parseNodes = parseNodesTW 8
 ----------------------------------------------------------------
 
 -- | Partial function that matches a plain text token
-getPlainText :: Located Tok.Token -> Located Text
-getPlainText (Located x (Tok.PlainText t)) = Located x t
+getPlainText :: Located Tok.Token -> Text
+getPlainText (Located _ (Tok.PlainText t)) = t
 getPlainText _ = error "Internal error"
 
 -- | Partial function that matches an escape sequence
@@ -222,4 +245,8 @@ getEscape :: Located Tok.Token -> Located Tok.Escape
 getEscape (Located x (Tok.TokenEscape e)) = Located x e
 getEscape _ = error "Internal error"
 
+-- | Partial function that matches a variable verbatim plain text token
+getVariableVerbPlainText :: Located Tok.Token -> Text
+getVariableVerbPlainText (Located x (Tok.VariableVerbPlainText t)) = t
+getVariableVerbPlainText _ = error "Internal error"
 }

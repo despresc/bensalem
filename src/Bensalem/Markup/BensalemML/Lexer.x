@@ -24,7 +24,7 @@ $escapeChars = [ \\ \{ \} \[ \] ]
 
 -- Characters that are significant after a backslash but (roughly) wouldn't be
 -- the start of an inline tag
-$notInlineStarterButSig = [ $escapeChars [ \% \# \& ] ]
+$notInlineStarterButSig = [ $escapeChars [ \% \# \& \` ] ]
 
 -- Characters that (very roughly) might start an inline tag
 $tagStarter = $plainPlainText # $notInlineStarterButSig
@@ -42,6 +42,9 @@ $attrKeyStarter = $tagStarter # [ = ]
 -- as $attrKeyStarter for the moment
 $attrKeyContinue = $attrKeyStarter
 
+-- Insignificant characters in a variable verbatim span
+$variableVerbPlain = $printable # [ \| \  \n ]
+
 -- A sequence of any amount of spaces or newlines
 @anyWhitespace = (\n | \ )*
 
@@ -55,6 +58,9 @@ $attrKeyContinue = $attrKeyStarter
 
 -- A full attribute key
 @attrKey = $attrKeyStarter $attrKeyContinue*
+
+-- Start of a variable verbatim span
+@variableVerbStart = "`"+ "|"
 
 tokens :-
 
@@ -82,6 +88,7 @@ tokens :-
   \\ @tagName { doInlineTag `thenCode` afterTag }
   \\& @tagName { doLayoutTag plainText `thenCode` afterTag }
   "\#" "#"* @tagName { doLevelTag plainText `thenCode` afterTag }
+  \\ @variableVerbStart { doVariableVerbStart `thenCode` variableVerb }
 }
 
 -- sadly repetitive - I could probably do some kind of recovery trick in
@@ -115,6 +122,7 @@ tokens :-
   \\ @tagName { doInlineTag }
   \\& @tagName { doLayoutTag plainText  }
   "\#" "#"* @tagName { doLevelTag plainText }
+  \\ @variableVerbStart { doVariableVerbStart `thenCode` variableVerb }
 }
 
 -- observe that we don't need to lex '}' here, as that's implicitly handled by
@@ -129,7 +137,6 @@ tokens :-
 -- least skip line space.
 
 <attrSet> {
-  -- TODO: should really add some checking here!
   @attrKey { doAttrKey }
   "=" { plainTok Equals }
   "{" { doStartBraceGroup attrSet `thenCode` plainText }
@@ -139,11 +146,21 @@ tokens :-
   @indent { doIndent }
 }
 
+<variableVerb> {
+  \| "`"+ "/" { checkVariableVerbEnd plainText }
+  -- alex has maximum matching, so this is guaranteed to be insignificant
+  -- if it actually matches
+  \| { textTok VariableVerbPlainText }
+  @indent { doVariableVerbIndent }
+  \ + { (\toklen spn _ -> pure $ Located spn $ LineSpace toklen) }
+  $variableVerbPlain+ { textTok VariableVerbPlainText  }
+}
+
 {
 -- | Parse a single token from the input stream
 lexToken :: Parser (Located Token)
 lexToken = do
-  parsestate@(ParseState sc inp toks _ _) <- get
+  parsestate@(ParseState sc inp toks _ _ _) <- get
   case toks of
     (t:toks') -> put (parsestate { parseStatePendingTokens = toks' }) *> pure t
     _ -> case alexScan inp sc of
