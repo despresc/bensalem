@@ -1,3 +1,7 @@
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveTraversable #-}
+
 -- |
 -- Description : Intermediate bensalem document syntax
 -- Copyright   : 2021 Christian Despres
@@ -16,6 +20,8 @@ module Bensalem.Markup.BensalemML.Syntax
     Attrs (..),
     AttrKey,
     AttrVal (..),
+    SrcName (..),
+    SrcNamePos (..),
 
     -- * Intermediate syntax builders
     NodeSequence (..),
@@ -48,75 +54,92 @@ import qualified Data.Sequence as Seq
 import Data.Text (Text)
 import qualified Data.Text as T
 
+-- | A name as it appears in the source, before resolution
+data SrcName = SrcName
+  { srcNamePos :: !SrcNamePos,
+    srcNameStr :: !Text
+  }
+  deriving (Eq, Ord, Show)
+
+-- | The possible position of a source name
+
+-- TODO: we're going to need to classify why the name doesn't have a position more precisely
+data SrcNamePos
+  = -- | we don't have any information about the location of this
+    -- name
+    NoSrcNamePos
+  | SrcNamePos !SrcSpan
+  deriving (Eq, Ord, Show)
+
 -- | A single node in bensalem syntax
-data Node
+data Node name
   = -- | normal text not containing line space or newlines
     PlainText !Text
   | -- | a run of single space characters
     LineSpace !Int
   | -- | a line ending
     LineEnd
-  | ElementNode !Element
-  | GroupNode !Group
+  | ElementNode !(Element name)
+  | GroupNode !(Group name)
   | InlineComment !Text
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
-data Group = Group
+data Group name = Group
   { groupStart :: !SrcSpan,
     groupEnd :: !SrcSpan,
-    groupContent :: !(Seq Node)
+    groupContent :: !(Seq (Node name))
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
 -- | An element tag. Note that we only save the position of the element tag
 -- itself. We also include all of the scope content of an element, which for
 -- level and layout elements includes the attribute map, any arguments, as well
 -- as the body argument content. Note that the scope content of an inline
 -- element is always empty.
-data Element = Element
+data Element name = Element
   { elementTagPos :: !SrcSpan,
-    elementName :: !EltName,
-    elementAttrs :: !Attrs,
-    elementScopeContent :: !ScopeContent
+    elementName :: !name,
+    elementAttrs :: !(Attrs name),
+    elementScopeContent :: !(ScopeContent name)
   }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
-data Attrs = NoAttrs | Attrs !(Seq Attr)
-  deriving (Eq, Ord, Show)
+data Attrs name = NoAttrs | Attrs !(Seq (Attr name))
+  deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
 -- | A raw attribute
-type Attr = (Located Text, AttrVal)
+type Attr name = (Located Text, AttrVal name)
 
-data AttrVal
-  = BracedAttrVal !(Seq Node)
-  | SetAttrVal !(Seq Attr)
-  deriving (Eq, Ord, Show)
+data AttrVal name
+  = BracedAttrVal !(Seq (Node name))
+  | SetAttrVal !(Seq (Attr name))
+  deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
 data Presentation = PresentInline | PresentLayout | PresentLevel
   deriving (Eq, Ord, Show)
 
 -- | The possible scope content of an element
-data ScopeContent
+data ScopeContent name
   = -- | inline elements have no scope content
     InlineScopeContent
   | -- | layout elements contain everything in their layout scope
-    LayoutScopeContent !(Seq Node)
+    LayoutScopeContent !(Seq (Node name))
   | -- | level elements contain everything in their level scope
-    LevelScopeContent !(Seq Node)
-  deriving (Eq, Ord, Show)
+    LevelScopeContent !(Seq (Node name))
+  deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
 -- | A newtype over a sequence of nodes whose semigroup instance will merge
 -- adjacent 'LineSpace' and 'PlainText' nodes
 
 -- TODO: make opaque? want to maintain invariant that line space and plain text
 -- is always merged
-newtype NodeSequence = NodeSequence {unNodeSequence :: Seq Node}
+newtype NodeSequence name = NodeSequence {unNodeSequence :: Seq (Node name)}
   deriving (Eq, Ord, Show)
 
-singleNode :: Node -> NodeSequence
+singleNode :: Node name -> NodeSequence name
 singleNode = NodeSequence . Seq.singleton
 
-instance Semigroup NodeSequence where
+instance Semigroup (NodeSequence name) where
   NodeSequence x@(s :|> n) <> NodeSequence y@(m :<| t) = case (n, m) of
     (LineSpace a, LineSpace b) -> NodeSequence $ s <> Seq.singleton (LineSpace $ a + b) <> t
     (PlainText a, PlainText b) -> NodeSequence $ s <> Seq.singleton (PlainText $ a <> b) <> t
@@ -124,18 +147,18 @@ instance Semigroup NodeSequence where
   NodeSequence x <> NodeSequence Empty = NodeSequence x
   NodeSequence Empty <> NodeSequence y = NodeSequence y
 
-instance Monoid NodeSequence where
+instance Monoid (NodeSequence name) where
   mempty = NodeSequence mempty
 
 -- | Unsafely construct a 'MixedContent' sequence from 'Text'. This function
 -- does not check that the 'Text' is free of syntactically-significant
 -- characters.
-text :: Text -> NodeSequence
+text :: Text -> NodeSequence name
 text t = singleNode $ PlainText t
 
 -- | Unsafely construct a 'NodesBuilder' sequence from 'Text' consisting of
 -- newlines and spaces
-indent :: Located Text -> NodeSequence
+indent :: Located Text -> NodeSequence name
 indent (Located _ t) = NodeSequence $ Seq.fromList chunks
   where
     -- slightly different behaviour from Text.lines, since that function doesn't
@@ -152,44 +175,47 @@ indent (Located _ t) = NodeSequence $ Seq.fromList chunks
       where
         n = T.length x
 
-escape :: Located Escape -> NodeSequence
+escape :: Located Escape -> NodeSequence name
 escape (Located _ e) = singleNode $ PlainText $ Tok.escapeText e
 
 -- | Unsafely construct a 'NodesBuilder' sequence representing a run of single
 -- spaces.
-lineSpace :: Located Int -> NodeSequence
+lineSpace :: Located Int -> NodeSequence name
 lineSpace (Located _ n) = singleNode $ LineSpace n
 
-inlineComment :: Located Text -> NodeSequence
+inlineComment :: Located Text -> NodeSequence name
 inlineComment (Located _ t) = singleNode $ InlineComment t
 
-group :: Located Tok.Token -> NodeSequence -> Located Tok.Token -> NodeSequence
+group :: Located Tok.Token -> NodeSequence name -> Located Tok.Token -> NodeSequence name
 group startBrace ns endBrace =
   singleNode $
     GroupNode $
       Group (locatedSpan startBrace) (locatedSpan endBrace) (unNodeSequence ns)
 
-elementNode :: Element -> NodeSequence
+elementNode :: Element name -> NodeSequence name
 elementNode = singleNode . ElementNode
 
-element :: Located EltName -> Attrs -> ScopeContent -> Element
+element :: Located EltName -> Attrs SrcName -> ScopeContent SrcName -> Element SrcName
 element elname attrs =
-  Element (locatedSpan elname) (locatedVal elname) attrs
+  Element (locatedSpan elname) (srcName elname) attrs
 
-layoutScopeContent :: NodeSequence -> ScopeContent
+srcName :: Located EltName -> SrcName
+srcName (Located s n) = SrcName (SrcNamePos s) n
+
+layoutScopeContent :: NodeSequence name -> ScopeContent name
 layoutScopeContent = LayoutScopeContent . unNodeSequence
 
-levelScopeContent :: NodeSequence -> ScopeContent
+levelScopeContent :: NodeSequence name -> ScopeContent name
 levelScopeContent = LevelScopeContent . unNodeSequence
 
-singleAttr :: Attr -> Seq Attr
+singleAttr :: Attr name -> Seq (Attr name)
 singleAttr = Seq.singleton
 
-addAttr :: Seq Attr -> Attr -> Seq Attr
+addAttr :: Seq (Attr name) -> Attr name -> Seq (Attr name)
 addAttr = (:|>)
 
-bracedAttrVal :: NodeSequence -> AttrVal
+bracedAttrVal :: NodeSequence name -> AttrVal name
 bracedAttrVal = BracedAttrVal . unNodeSequence
 
-setAttrVal :: Seq Attr -> AttrVal
+setAttrVal :: Seq (Attr name) -> (AttrVal name)
 setAttrVal = SetAttrVal

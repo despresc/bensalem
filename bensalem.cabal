@@ -33,6 +33,7 @@ library
   exposed-modules:
     Bensalem.Markup.BensalemML.Lexer
     Bensalem.Markup.BensalemML.LexerActions
+    Bensalem.Markup.BensalemML.Name
     Bensalem.Markup.BensalemML.Parser
     Bensalem.Markup.BensalemML.ParserDefs
     Bensalem.Markup.BensalemML.Syntax

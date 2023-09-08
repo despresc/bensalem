@@ -1,5 +1,6 @@
 {
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 
 -- |
 -- Description : Bensalem document parser
@@ -61,7 +62,7 @@ import Data.Sequence (Seq)
 %%
 
 -- a top-level node
-MixedContentNode :: { NodeSequence }
+MixedContentNode :: { NodeSequence SrcName }
   : text { text (getPlainText $1) }
   | escape { escape (getEscape $1) }
   | lineSpace { lineSpace (getLineSpace $1) }
@@ -71,75 +72,74 @@ MixedContentNode :: { NodeSequence }
   | VariableVerbSpan { $1 }
   | inlineComment { inlineComment (getInlineComment $1) }
 
-MixedContent :: { NodeSequence }
+MixedContent :: { NodeSequence SrcName }
   : {- empty -} { mempty }
   | MixedContent1 { $1 }
 
-MixedContent1 :: { NodeSequence }
+MixedContent1 :: { NodeSequence SrcName }
   : MixedContentNode { $1 }
   | MixedContent1 MixedContentNode { $1 <> $2 }
 
-VariableVerbSpan :: { NodeSequence }
+VariableVerbSpan :: { forall name. NodeSequence name }
 VariableVerbSpan
   : startVariableVerb VariableVerbContent endVariableVerb { $2 }
 
-VariableVerbContent :: { NodeSequence }
+VariableVerbContent :: { forall name. NodeSequence name }
   : {- empty -} { mempty }
   | VariableVerbContent1 { $1 }
 
-VariableVerbContent1 :: { NodeSequence }
+VariableVerbContent1 :: { forall name. NodeSequence name }
 VariableVerbContent1
   : VariableVerbPart { $1 }
   | VariableVerbContent1 VariableVerbPart { $1 <> $2 }
 
-VariableVerbPart :: { NodeSequence }
+VariableVerbPart :: { forall name. NodeSequence name }
 VariableVerbPart
   : variableVerbPlainText { text (getVariableVerbPlainText $1) }
   | lineSpace { lineSpace (getLineSpace $1) }
   | indent { indent (getIndent $1) }
 
-GroupNode :: { NodeSequence }
+GroupNode :: { NodeSequence SrcName }
 GroupNode
   : startBrace MixedContent endBrace { group $1 $2 $3 }
 
-ElementNode :: { NodeSequence }
+ElementNode :: { NodeSequence SrcName }
   : InlineElement { elementNode $1 }
   | LevelElement { elementNode $1 }
   | LayoutElement { elementNode $1 }
 
-InlineElement :: { Element }
+InlineElement :: { Element SrcName }
   : inlineTag OptionalAttrSet
       { element (getInlineTag $1) $2 InlineScopeContent }
 
-LayoutElement :: { Element }
+LayoutElement :: { Element SrcName }
   : layoutTag OptionalAttrSet MixedContent endImplicitScope
       { element (getLayoutTag $1) $2 (layoutScopeContent $3) }
 
-LevelElement :: { Element }
+LevelElement :: { Element SrcName }
   : levelTag OptionalAttrSet MixedContent endImplicitScope
       { element (getLevelTag $1) $2 (levelScopeContent $3) }
 
-OptionalAttrSet :: { Attrs }
+OptionalAttrSet :: { Attrs SrcName }
 OptionalAttrSet
   : {- empty -} { NoAttrs }
   | AttrSet { Attrs $1 }
 
-AttrSet :: { Seq Attr }
+AttrSet :: { Seq (Attr SrcName) }
 AttrSet
   : startAttrSet Spaces Attrs endAttrSet { $3 }
 
--- We sort out attribute validation later
-Attrs :: { Seq Attr }
+Attrs :: { Seq (Attr SrcName) }
 Attrs
   : {- empty -} { mempty }
   | Attrs1 { $1 }
 
-Attrs1 :: { Seq Attr }
+Attrs1 :: { Seq (Attr SrcName) }
 Attrs1
   : AttrEntry { singleAttr $1 }
   | Attrs1 Spaces AttrEntry { addAttr $1 $3 }
 
-AttrEntry :: { Attr }
+AttrEntry :: { Attr SrcName }
 AttrEntry
   : AttrKey equals AttrVal { ($1, $3) }
 
@@ -147,7 +147,7 @@ AttrKey :: { Located Text }
 AttrKey
   : attrKey { getAttrKey $1 }
 
-AttrVal :: { AttrVal }
+AttrVal :: { AttrVal SrcName }
 AttrVal
   : startBrace MixedContent endBrace { bracedAttrVal $2 }
   | AttrSet { setAttrVal $1 }
@@ -170,7 +170,7 @@ lexer :: (Located Tok.Token -> Parser a) -> Parser a
 lexer = (lexToken >>=)
 
 -- | Parse a sequence of intermediate bensalem nodes at the top level
-pNodes :: Parser (Seq Node)
+pNodes :: Parser (Seq (Node SrcName))
 pNodes = unNodeSequence <$> pManyNodes
 
 -- | Parse a sequence of bensalem nodes from the given input. These nodes are
@@ -183,7 +183,7 @@ parseNodesTW ::
   Text ->
   -- | input
   Text ->
-  Either ParseError (Seq Node)
+  Either ParseError (Seq (Node SrcName))
 parseNodesTW tw nm inp = evalParser pNodes $ initAlexInput tw nm inp
 
 -- | Parse a sequence of bensalem nodes from the given input with
@@ -193,7 +193,7 @@ parseNodes ::
   Text ->
   -- | input
   Text ->
-  Either ParseError (Seq Node)
+  Either ParseError (Seq (Node SrcName))
 parseNodes = parseNodesTW 8
 
 ----------------------------------------------------------------
