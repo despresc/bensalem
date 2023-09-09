@@ -99,20 +99,20 @@ data Group name = Group
 data Element name = Element
   { elementTagPos :: !SrcSpan,
     elementName :: !name,
-    elementAttrs :: !(Attrs name),
+    elementAttrs :: !(Attrs Node name),
     elementScopeContent :: !(ScopeContent name)
   }
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
-data Attrs name = NoAttrs | Attrs !(Seq (Attr name))
+data Attrs f name = NoAttrs | Attrs !(Seq (Attr f name))
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
 -- | A raw attribute
-type Attr name = (Located Text, AttrVal name)
+type Attr f name = (Located Text, AttrVal f name)
 
-data AttrVal name
-  = BracedAttrVal !(Seq (Node name))
-  | SetAttrVal !(Seq (Attr name))
+data AttrVal f name
+  = BracedAttrVal !(Seq (f name))
+  | SetAttrVal !(Seq (Attr f name))
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
 data Presentation = PresentInline | PresentLayout | PresentLevel
@@ -195,7 +195,7 @@ group startBrace ns endBrace =
 elementNode :: Element name -> NodeSequence name
 elementNode = singleNode . ElementNode
 
-element :: Located EltName -> Attrs SrcName -> ScopeContent SrcName -> Element SrcName
+element :: Located EltName -> Attrs Node SrcName -> ScopeContent SrcName -> Element SrcName
 element elname attrs =
   Element (locatedSpan elname) (srcName elname) attrs
 
@@ -208,14 +208,14 @@ layoutScopeContent = LayoutScopeContent . unNodeSequence
 levelScopeContent :: NodeSequence name -> ScopeContent name
 levelScopeContent = LevelScopeContent . unNodeSequence
 
-singleAttr :: Attr name -> Seq (Attr name)
+singleAttr :: Attr f name -> Seq (Attr f name)
 singleAttr = Seq.singleton
 
-addAttr :: Seq (Attr name) -> Attr name -> Seq (Attr name)
+addAttr :: Seq (Attr f name) -> Attr f name -> Seq (Attr f name)
 addAttr = (:|>)
 
-bracedAttrVal :: NodeSequence name -> AttrVal name
+bracedAttrVal :: NodeSequence name -> AttrVal Node name
 bracedAttrVal = BracedAttrVal . unNodeSequence
 
-setAttrVal :: Seq (Attr name) -> (AttrVal name)
+setAttrVal :: Seq (Attr f name) -> (AttrVal f name)
 setAttrVal = SetAttrVal
