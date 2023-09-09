@@ -23,9 +23,9 @@ library
   build-depends:
     array,
     containers,
-    megaparsec,
+--    megaparsec,
     mtl,
-    prettyprinter,
+    -- prettyprinter,
     text,
   build-tool-depends:
     alex:alex,

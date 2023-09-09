@@ -2,7 +2,7 @@
 
 -- |
 -- Description : Names and resolution
--- Copyright   : 2021 Christian Despres
+-- Copyright   : 2023 Christian Despres
 -- License     : BSD-2-Clause
 -- Maintainer  : Christian Despres
 --
@@ -41,15 +41,52 @@ data NameVariety
     NameWiredIn !WiredIn
   deriving (Eq, Ord, Show)
 
--- | A wired-in name.
+-- | A wired-in name. These represent simple and not particularly fundamental
+-- markup constructs to start, and will change in future.
 
 -- TODO: probably should have this be looser and instead solve this with unique
 -- identifiers, but this is fine for now
 
 -- For now, these need to match the source names of the entities, aside from the
 -- initial WI prefix
+
 data WiredIn
-  = WIemph
+  = -- | section
+    WIsection
+  | -- | block of TeX math macro definitions
+    WItexmacros
+  | -- | heading of a section
+    WIheading
+  | -- | \"classic\" table
+    WItable
+  | -- | table body
+    WItbody
+  | -- | table row
+    WIrow
+  | -- | ordered list
+    WIol
+  | -- | unordered list
+    WIul
+  | -- | list item
+    WIli
+  | -- | paragraph
+    WIp
+  | -- | emphasized text
+    WIemph
+  | -- | a marker for a physical page
+    WIphysPage
+  | -- | a reference to a place
+    WIplaceRef
+  | -- | a reference to a person
+    WIpersonRef
+  | -- | a reference to a physical place
+    WIlocRef
+  | -- | TeX-style display math
+    WItdmath
+  | -- | TeX-style inline math
+    WItimath
+  | -- | citation of something
+    WIcitation
   deriving (Eq, Ord, Show, Enum, Bounded)
 
 -- | Resolve a 'SrcName' to a wired-in name, if possible
