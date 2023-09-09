@@ -38,6 +38,7 @@ library
     Bensalem.Markup.BensalemML.ParserDefs
     Bensalem.Markup.BensalemML.Syntax
     Bensalem.Markup.BensalemML.Token
+    Bensalem.Markup.BensalemML.WiredIn
 
 test-suite test
   import: base
