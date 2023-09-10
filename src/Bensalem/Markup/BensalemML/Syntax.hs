@@ -195,8 +195,8 @@ elementNode :: Element name -> NodeSequence name
 elementNode = singleNode . ElementNode
 
 element :: Located EltName -> Attrs SrcName -> ScopeContent SrcName -> Element SrcName
-element elname attrs =
-  Element (locatedSpan elname) (srcName elname) attrs
+element elname =
+  Element (locatedSpan elname) (srcName elname)
 
 srcName :: Located EltName -> SrcName
 srcName (Located s n) = SrcName (SrcNamePos s) n
@@ -216,5 +216,5 @@ addAttr = (:|>)
 bracedAttrVal :: NodeSequence name -> AttrVal name
 bracedAttrVal = BracedAttrVal . unNodeSequence
 
-setAttrVal :: Seq (Attr name) -> (AttrVal name)
+setAttrVal :: Seq (Attr name) -> AttrVal name
 setAttrVal = SetAttrVal

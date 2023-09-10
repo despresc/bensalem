@@ -83,9 +83,7 @@ wiredInArity _ = 1
 -- that would be more feasilbe if we get rid of the 'WiredIn' type like the note
 -- on that type says.
 resolveWiredIn :: Text -> Maybe WiredIn
-resolveWiredIn t = case M.lookup t wiredInNameMap of
-  Just nv -> Just nv
-  Nothing -> Nothing
+resolveWiredIn = flip M.lookup wiredInNameMap
 
 wiredInNameMap :: Map Text WiredIn
 wiredInNameMap = M.fromList $ go <$> [minBound .. maxBound]

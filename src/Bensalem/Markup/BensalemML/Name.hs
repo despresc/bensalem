@@ -1,5 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
-
 -- |
 -- Description : Names and resolution
 -- Copyright   : 2023 Christian Despres
@@ -36,9 +34,9 @@ data Name = Name
   }
   deriving (Eq, Ord, Show)
 
-data NameVariety
+newtype NameVariety
   = -- | a wired-in name
-    NameWiredIn !WiredIn
+    NameWiredIn WiredIn
   deriving (Eq, Ord, Show)
 
 resolveByWiredOnly :: Node SrcName -> Either SrcName (Node Name)

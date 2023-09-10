@@ -25,8 +25,6 @@ import Bensalem.Markup.BensalemML.ParserDefs
   )
 import Bensalem.Markup.BensalemML.Syntax
   ( Node,
-    SrcName,
-    srcNameStr,
   )
 import qualified Bensalem.Markup.BensalemML.Syntax as Syn
 import Bensalem.Markup.BensalemML.WiredIn
