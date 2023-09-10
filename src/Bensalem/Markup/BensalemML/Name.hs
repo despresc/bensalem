@@ -16,6 +16,7 @@ module Bensalem.Markup.BensalemML.Name
     nameVariety,
     resolveWiredIn,
     resolveByWiredOnly,
+    resolveNodesByWiredOnly,
   )
 where
 
@@ -25,6 +26,7 @@ import Bensalem.Markup.BensalemML.Syntax
     srcNameStr,
   )
 import Bensalem.Markup.BensalemML.WiredIn
+import Data.Sequence (Seq)
 
 data Name = Name
   { -- | what the name is
@@ -39,9 +41,12 @@ data NameVariety
     NameWiredIn !WiredIn
   deriving (Eq, Ord, Show)
 
-resolveByWiredOnly :: Node SrcName -> Maybe (Node Name)
+resolveByWiredOnly :: Node SrcName -> Either SrcName (Node Name)
 resolveByWiredOnly = traverse go
   where
     go sn = case resolveWiredIn $ srcNameStr sn of
-      Just nv -> Just $! Name (NameWiredIn nv) sn
-      Nothing -> Nothing
+      Just nv -> Right $ Name (NameWiredIn nv) sn
+      Nothing -> Left sn
+
+resolveNodesByWiredOnly :: Seq (Node SrcName) -> Either SrcName (Seq (Node Name))
+resolveNodesByWiredOnly = traverse resolveByWiredOnly

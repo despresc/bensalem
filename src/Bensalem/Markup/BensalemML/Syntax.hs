@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveFoldable #-}
-{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveTraversable #-}
 
 -- |
@@ -22,6 +20,7 @@ module Bensalem.Markup.BensalemML.Syntax
     AttrVal (..),
     SrcName (..),
     SrcNamePos (..),
+    Group (..),
 
     -- * Intermediate syntax builders
     NodeSequence (..),
@@ -99,20 +98,20 @@ data Group name = Group
 data Element name = Element
   { elementTagPos :: !SrcSpan,
     elementName :: !name,
-    elementAttrs :: !(Attrs Node name),
+    elementAttrs :: !(Attrs name),
     elementScopeContent :: !(ScopeContent name)
   }
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
-data Attrs f name = NoAttrs | Attrs !(Seq (Attr f name))
+data Attrs name = NoAttrs | Attrs !(Seq (Attr name))
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
 -- | A raw attribute
-type Attr f name = (Located Text, AttrVal f name)
+type Attr name = (Located Text, AttrVal name)
 
-data AttrVal f name
-  = BracedAttrVal !(Seq (f name))
-  | SetAttrVal !(Seq (Attr f name))
+data AttrVal name
+  = BracedAttrVal !(Seq (Node name))
+  | SetAttrVal !(Seq (Attr name))
   deriving (Eq, Ord, Show, Functor, Foldable, Traversable)
 
 data Presentation = PresentInline | PresentLayout | PresentLevel
@@ -195,7 +194,7 @@ group startBrace ns endBrace =
 elementNode :: Element name -> NodeSequence name
 elementNode = singleNode . ElementNode
 
-element :: Located EltName -> Attrs Node SrcName -> ScopeContent SrcName -> Element SrcName
+element :: Located EltName -> Attrs SrcName -> ScopeContent SrcName -> Element SrcName
 element elname attrs =
   Element (locatedSpan elname) (srcName elname) attrs
 
@@ -208,14 +207,14 @@ layoutScopeContent = LayoutScopeContent . unNodeSequence
 levelScopeContent :: NodeSequence name -> ScopeContent name
 levelScopeContent = LevelScopeContent . unNodeSequence
 
-singleAttr :: Attr f name -> Seq (Attr f name)
+singleAttr :: Attr name -> Seq (Attr name)
 singleAttr = Seq.singleton
 
-addAttr :: Seq (Attr f name) -> Attr f name -> Seq (Attr f name)
+addAttr :: Seq (Attr name) -> Attr name -> Seq (Attr name)
 addAttr = (:|>)
 
-bracedAttrVal :: NodeSequence name -> AttrVal Node name
+bracedAttrVal :: NodeSequence name -> AttrVal name
 bracedAttrVal = BracedAttrVal . unNodeSequence
 
-setAttrVal :: Seq (Attr f name) -> (AttrVal f name)
+setAttrVal :: Seq (Attr name) -> (AttrVal name)
 setAttrVal = SetAttrVal

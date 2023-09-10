@@ -14,7 +14,24 @@ fromList
      , srcCol = 9
      }
     }
-   , elementName = "layout"
+   , elementName = SrcName
+    { srcNamePos = SrcNamePos
+     ( SrcSpan
+      { srcSpanName = ""
+      , srcSpanStart = SrcPos
+       { srcOffset = 0
+       , srcLine = 1
+       , srcCol = 1
+       }
+      , srcSpanEnd = SrcPos
+       { srcOffset = 8
+       , srcLine = 1
+       , srcCol = 9
+       }
+      }
+     )
+    , srcNameStr = "layout"
+    }
    , elementAttrs = NoAttrs
    , elementScopeContent = LayoutScopeContent
     ( fromList

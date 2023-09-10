@@ -14,7 +14,24 @@ fromList
      , srcCol = 11
      }
     }
-   , elementName = "inlineelt"
+   , elementName = SrcName
+    { srcNamePos = SrcNamePos
+     ( SrcSpan
+      { srcSpanName = ""
+      , srcSpanStart = SrcPos
+       { srcOffset = 0
+       , srcLine = 1
+       , srcCol = 1
+       }
+      , srcSpanEnd = SrcPos
+       { srcOffset = 10
+       , srcLine = 1
+       , srcCol = 11
+       }
+      }
+     )
+    , srcNameStr = "inlineelt"
+    }
    , elementAttrs = Attrs
     ( fromList
      [

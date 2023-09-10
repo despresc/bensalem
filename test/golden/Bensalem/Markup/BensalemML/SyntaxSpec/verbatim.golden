@@ -24,7 +24,24 @@ fromList
      , srcCol = 6
      }
     }
-   , elementName = "foo"
+   , elementName = SrcName
+    { srcNamePos = SrcNamePos
+     ( SrcSpan
+      { srcSpanName = ""
+      , srcSpanStart = SrcPos
+       { srcOffset = 49
+       , srcLine = 2
+       , srcCol = 1
+       }
+      , srcSpanEnd = SrcPos
+       { srcOffset = 54
+       , srcLine = 2
+       , srcCol = 6
+       }
+      }
+     )
+    , srcNameStr = "foo"
+    }
    , elementAttrs = NoAttrs
    , elementScopeContent = LayoutScopeContent
     ( fromList
@@ -58,7 +75,24 @@ fromList
      , srcCol = 9
      }
     }
-   , elementName = "testinl"
+   , elementName = SrcName
+    { srcNamePos = SrcNamePos
+     ( SrcSpan
+      { srcSpanName = ""
+      , srcSpanStart = SrcPos
+       { srcOffset = 92
+       , srcLine = 5
+       , srcCol = 1
+       }
+      , srcSpanEnd = SrcPos
+       { srcOffset = 100
+       , srcLine = 5
+       , srcCol = 9
+       }
+      }
+     )
+    , srcNameStr = "testinl"
+    }
    , elementAttrs = NoAttrs
    , elementScopeContent = InlineScopeContent
    }

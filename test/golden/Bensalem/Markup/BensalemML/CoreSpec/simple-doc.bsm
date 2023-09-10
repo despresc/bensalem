@@ -1,0 +1,13 @@
+\#section
+
+\&p Some \emph{interesting} text here
+
+\##section
+
+\&ol
+  \&li content
+  \&li \p{different content}
+
+\#section
+
+closing

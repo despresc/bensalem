@@ -1,0 +1,347 @@
+fromList
+ [ App
+  ( Name
+   { nameVariety = NameWiredIn WIsection
+   , nameStr = SrcName
+    { srcNamePos = SrcNamePos
+     ( SrcSpan
+      { srcSpanName = ""
+      , srcSpanStart = SrcPos
+       { srcOffset = 0
+       , srcLine = 1
+       , srcCol = 1
+       }
+      , srcSpanEnd = SrcPos
+       { srcOffset = 9
+       , srcLine = 1
+       , srcCol = 10
+       }
+      }
+     )
+    , srcNameStr = "section"
+    }
+   }
+  )
+  ( fromList [] )
+  ( fromList
+   [
+    ( ArgScoped
+    , fromList
+     [ LineEnd
+     , LineEnd
+     , App
+      ( Name
+       { nameVariety = NameWiredIn WIp
+       , nameStr = SrcName
+        { srcNamePos = SrcNamePos
+         ( SrcSpan
+          { srcSpanName = ""
+          , srcSpanStart = SrcPos
+           { srcOffset = 11
+           , srcLine = 3
+           , srcCol = 1
+           }
+          , srcSpanEnd = SrcPos
+           { srcOffset = 14
+           , srcLine = 3
+           , srcCol = 4
+           }
+          }
+         )
+        , srcNameStr = "p"
+        }
+       }
+      )
+      ( fromList [] )
+      ( fromList
+       [
+        ( ArgScoped
+        , fromList
+         [ LineSpace 1
+         , PlainText "Some"
+         , LineSpace 1
+         , App
+          ( Name
+           { nameVariety = NameWiredIn WIemph
+           , nameStr = SrcName
+            { srcNamePos = SrcNamePos
+             ( SrcSpan
+              { srcSpanName = ""
+              , srcSpanStart = SrcPos
+               { srcOffset = 20
+               , srcLine = 3
+               , srcCol = 10
+               }
+              , srcSpanEnd = SrcPos
+               { srcOffset = 25
+               , srcLine = 3
+               , srcCol = 15
+               }
+              }
+             )
+            , srcNameStr = "emph"
+            }
+           }
+          )
+          ( fromList [] )
+          ( fromList
+           [
+            ( ArgBraced
+             ( SrcSpan
+              { srcSpanName = ""
+              , srcSpanStart = SrcPos
+               { srcOffset = 25
+               , srcLine = 3
+               , srcCol = 15
+               }
+              , srcSpanEnd = SrcPos
+               { srcOffset = 26
+               , srcLine = 3
+               , srcCol = 16
+               }
+              }
+             )
+            , fromList
+             [ PlainText "interesting" ]
+            )
+           ]
+          )
+         , LineSpace 1
+         , PlainText "text"
+         , LineSpace 1
+         , PlainText "here"
+         ]
+        )
+       ]
+      )
+     , LineEnd
+     , LineEnd
+     , App
+      ( Name
+       { nameVariety = NameWiredIn WIsection
+       , nameStr = SrcName
+        { srcNamePos = SrcNamePos
+         ( SrcSpan
+          { srcSpanName = ""
+          , srcSpanStart = SrcPos
+           { srcOffset = 50
+           , srcLine = 5
+           , srcCol = 1
+           }
+          , srcSpanEnd = SrcPos
+           { srcOffset = 60
+           , srcLine = 5
+           , srcCol = 11
+           }
+          }
+         )
+        , srcNameStr = "section"
+        }
+       }
+      )
+      ( fromList [] )
+      ( fromList
+       [
+        ( ArgScoped
+        , fromList
+         [ LineEnd
+         , LineEnd
+         , App
+          ( Name
+           { nameVariety = NameWiredIn WIol
+           , nameStr = SrcName
+            { srcNamePos = SrcNamePos
+             ( SrcSpan
+              { srcSpanName = ""
+              , srcSpanStart = SrcPos
+               { srcOffset = 62
+               , srcLine = 7
+               , srcCol = 1
+               }
+              , srcSpanEnd = SrcPos
+               { srcOffset = 66
+               , srcLine = 7
+               , srcCol = 5
+               }
+              }
+             )
+            , srcNameStr = "ol"
+            }
+           }
+          )
+          ( fromList [] )
+          ( fromList
+           [
+            ( ArgScoped
+            , fromList
+             [ LineEnd
+             , LineSpace 2
+             , App
+              ( Name
+               { nameVariety = NameWiredIn WIli
+               , nameStr = SrcName
+                { srcNamePos = SrcNamePos
+                 ( SrcSpan
+                  { srcSpanName = ""
+                  , srcSpanStart = SrcPos
+                   { srcOffset = 69
+                   , srcLine = 8
+                   , srcCol = 3
+                   }
+                  , srcSpanEnd = SrcPos
+                   { srcOffset = 73
+                   , srcLine = 8
+                   , srcCol = 7
+                   }
+                  }
+                 )
+                , srcNameStr = "li"
+                }
+               }
+              )
+              ( fromList [] )
+              ( fromList
+               [
+                ( ArgScoped
+                , fromList
+                 [ LineSpace 1
+                 , PlainText "content"
+                 ]
+                )
+               ]
+              )
+             , LineEnd
+             , LineSpace 2
+             , App
+              ( Name
+               { nameVariety = NameWiredIn WIli
+               , nameStr = SrcName
+                { srcNamePos = SrcNamePos
+                 ( SrcSpan
+                  { srcSpanName = ""
+                  , srcSpanStart = SrcPos
+                   { srcOffset = 84
+                   , srcLine = 9
+                   , srcCol = 3
+                   }
+                  , srcSpanEnd = SrcPos
+                   { srcOffset = 88
+                   , srcLine = 9
+                   , srcCol = 7
+                   }
+                  }
+                 )
+                , srcNameStr = "li"
+                }
+               }
+              )
+              ( fromList [] )
+              ( fromList
+               [
+                ( ArgScoped
+                , fromList
+                 [ LineSpace 1
+                 , App
+                  ( Name
+                   { nameVariety = NameWiredIn WIp
+                   , nameStr = SrcName
+                    { srcNamePos = SrcNamePos
+                     ( SrcSpan
+                      { srcSpanName = ""
+                      , srcSpanStart = SrcPos
+                       { srcOffset = 89
+                       , srcLine = 9
+                       , srcCol = 8
+                       }
+                      , srcSpanEnd = SrcPos
+                       { srcOffset = 91
+                       , srcLine = 9
+                       , srcCol = 10
+                       }
+                      }
+                     )
+                    , srcNameStr = "p"
+                    }
+                   }
+                  )
+                  ( fromList [] )
+                  ( fromList
+                   [
+                    ( ArgBraced
+                     ( SrcSpan
+                      { srcSpanName = ""
+                      , srcSpanStart = SrcPos
+                       { srcOffset = 91
+                       , srcLine = 9
+                       , srcCol = 10
+                       }
+                      , srcSpanEnd = SrcPos
+                       { srcOffset = 92
+                       , srcLine = 9
+                       , srcCol = 11
+                       }
+                      }
+                     )
+                    , fromList
+                     [ PlainText "different"
+                     , LineSpace 1
+                     , PlainText "content"
+                     ]
+                    )
+                   ]
+                  )
+                 ]
+                )
+               ]
+              )
+             ]
+            )
+           ]
+          )
+         , LineEnd
+         , LineEnd
+         ]
+        )
+       ]
+      )
+     ]
+    )
+   ]
+  )
+ , App
+  ( Name
+   { nameVariety = NameWiredIn WIsection
+   , nameStr = SrcName
+    { srcNamePos = SrcNamePos
+     ( SrcSpan
+      { srcSpanName = ""
+      , srcSpanStart = SrcPos
+       { srcOffset = 112
+       , srcLine = 11
+       , srcCol = 1
+       }
+      , srcSpanEnd = SrcPos
+       { srcOffset = 121
+       , srcLine = 11
+       , srcCol = 10
+       }
+      }
+     )
+    , srcNameStr = "section"
+    }
+   }
+  )
+  ( fromList [] )
+  ( fromList
+   [
+    ( ArgScoped
+    , fromList
+     [ LineEnd
+     , LineEnd
+     , PlainText "closing"
+     ]
+    )
+   ]
+  )
+ , LineEnd
+ ]

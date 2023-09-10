@@ -7,6 +7,7 @@
 -- The entry point to the test suite
 module Main where
 
+import qualified Bensalem.Markup.BensalemML.CoreSpec as CoreSpec
 import qualified Bensalem.Markup.BensalemML.SyntaxSpec as SyntaxSpec
 import qualified Bensalem.Markup.BensalemML.TokenSpec as TokenSpec
 import Test.Tasty
@@ -19,5 +20,6 @@ tests =
   testGroup
     "Tests"
     [ TokenSpec.spec,
-      SyntaxSpec.spec
+      SyntaxSpec.spec,
+      CoreSpec.spec
     ]

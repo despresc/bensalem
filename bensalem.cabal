@@ -31,6 +31,7 @@ library
     alex:alex,
     happy:happy
   exposed-modules:
+    Bensalem.Markup.BensalemML.Core
     Bensalem.Markup.BensalemML.Lexer
     Bensalem.Markup.BensalemML.LexerActions
     Bensalem.Markup.BensalemML.Name
@@ -56,6 +57,7 @@ test-suite test
     tasty-hunit,
     text,
   other-modules:
+    Bensalem.Markup.BensalemML.CoreSpec
     Bensalem.Markup.BensalemML.SyntaxSpec
     Bensalem.Markup.BensalemML.TokenSpec
     Test.Common

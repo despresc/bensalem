@@ -14,7 +14,24 @@ fromList
      , srcCol = 9
      }
     }
-   , elementName = "levtag"
+   , elementName = SrcName
+    { srcNamePos = SrcNamePos
+     ( SrcSpan
+      { srcSpanName = ""
+      , srcSpanStart = SrcPos
+       { srcOffset = 0
+       , srcLine = 1
+       , srcCol = 1
+       }
+      , srcSpanEnd = SrcPos
+       { srcOffset = 8
+       , srcLine = 1
+       , srcCol = 9
+       }
+      }
+     )
+    , srcNameStr = "levtag"
+    }
    , elementAttrs = NoAttrs
    , elementScopeContent = LevelScopeContent
     ( fromList
@@ -36,7 +53,24 @@ fromList
          , srcCol = 11
          }
         }
-       , elementName = "layout"
+       , elementName = SrcName
+        { srcNamePos = SrcNamePos
+         ( SrcSpan
+          { srcSpanName = ""
+          , srcSpanStart = SrcPos
+           { srcOffset = 12
+           , srcLine = 3
+           , srcCol = 3
+           }
+          , srcSpanEnd = SrcPos
+           { srcOffset = 20
+           , srcLine = 3
+           , srcCol = 11
+           }
+          }
+         )
+        , srcNameStr = "layout"
+        }
        , elementAttrs = NoAttrs
        , elementScopeContent = LayoutScopeContent
         ( fromList
@@ -69,7 +103,24 @@ fromList
      , srcCol = 11
      }
     }
-   , elementName = "levtag2"
+   , elementName = SrcName
+    { srcNamePos = SrcNamePos
+     ( SrcSpan
+      { srcSpanName = ""
+      , srcSpanStart = SrcPos
+       { srcOffset = 30
+       , srcLine = 6
+       , srcCol = 2
+       }
+      , srcSpanEnd = SrcPos
+       { srcOffset = 39
+       , srcLine = 6
+       , srcCol = 11
+       }
+      }
+     )
+    , srcNameStr = "levtag2"
+    }
    , elementAttrs = NoAttrs
    , elementScopeContent = LevelScopeContent
     ( fromList [] )

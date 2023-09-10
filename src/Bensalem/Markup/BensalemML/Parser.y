@@ -120,26 +120,26 @@ LevelElement :: { Element SrcName }
   : levelTag OptionalAttrSet MixedContent endImplicitScope
       { element (getLevelTag $1) $2 (levelScopeContent $3) }
 
-OptionalAttrSet :: { Attrs Node SrcName }
+OptionalAttrSet :: { Attrs SrcName }
 OptionalAttrSet
   : {- empty -} { NoAttrs }
   | AttrSet { Attrs $1 }
 
-AttrSet :: { Seq (Attr Node SrcName) }
+AttrSet :: { Seq (Attr SrcName) }
 AttrSet
   : startAttrSet Spaces Attrs endAttrSet { $3 }
 
-Attrs :: { Seq (Attr Node SrcName) }
+Attrs :: { Seq (Attr SrcName) }
 Attrs
   : {- empty -} { mempty }
   | Attrs1 { $1 }
 
-Attrs1 :: { Seq (Attr Node SrcName) }
+Attrs1 :: { Seq (Attr SrcName) }
 Attrs1
   : AttrEntry { singleAttr $1 }
   | Attrs1 Spaces AttrEntry { addAttr $1 $3 }
 
-AttrEntry :: { Attr Node SrcName }
+AttrEntry :: { Attr SrcName }
 AttrEntry
   : AttrKey equals AttrVal { ($1, $3) }
 
@@ -147,7 +147,7 @@ AttrKey :: { Located Text }
 AttrKey
   : attrKey { getAttrKey $1 }
 
-AttrVal :: { AttrVal Node SrcName }
+AttrVal :: { AttrVal SrcName }
 AttrVal
   : startBrace MixedContent endBrace { bracedAttrVal $2 }
   | AttrSet { setAttrVal $1 }

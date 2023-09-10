@@ -7,6 +7,7 @@ module Bensalem.Markup.BensalemML.WiredIn
   ( WiredIn (..),
     resolveWiredIn,
     wiredInArity,
+    Arity,
   )
 where
 
