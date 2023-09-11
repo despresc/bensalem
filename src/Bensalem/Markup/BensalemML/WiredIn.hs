@@ -29,8 +29,6 @@ import qualified Data.Text as T
 data WiredIn
   = -- | section
     WIsection
-  | -- | block of TeX math macro definitions
-    WItexmacros
   | -- | heading of a section
     WIheading
   | -- | \"classic\" table
@@ -39,6 +37,8 @@ data WiredIn
     WItbody
   | -- | table row
     WIrow
+  | -- | table cell
+    WIcell
   | -- | ordered list
     WIol
   | -- | unordered list

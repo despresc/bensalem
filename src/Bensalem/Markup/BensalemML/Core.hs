@@ -13,8 +13,11 @@
 module Bensalem.Markup.BensalemML.Core
   ( -- * Core expressions
     Expr (..),
+    Attr,
+    Arg,
     AttrVal (..),
     toExpr,
+    InterpError (..),
   )
 where
 
@@ -158,16 +161,3 @@ attrsToExpr (Syn.Attrs attrs) = traverse attrToExpr attrs
         Syn.BracedAttrVal ns -> AttrSeq <$> toExpr ns
         Syn.SetAttrVal as -> AttrSet <$> traverse attrToExpr as
       pure (k, v')
-
-{-
-class ToHtml a where
-  compileHtml :: a -> Html.Markup
-
-instance ToHtml (Node Name)
-
-instance ToHtml Text where
-  compileHtml = Html.text
-
-instance ToHtml (Group Name) where
-  compileHtml = undefined
--}

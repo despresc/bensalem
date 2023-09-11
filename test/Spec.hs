@@ -8,6 +8,7 @@
 module Main where
 
 import qualified Bensalem.Markup.BensalemML.CoreSpec as CoreSpec
+import qualified Bensalem.Markup.BensalemML.InterpretSpec as InterpretSpec
 import qualified Bensalem.Markup.BensalemML.SyntaxSpec as SyntaxSpec
 import qualified Bensalem.Markup.BensalemML.TokenSpec as TokenSpec
 import Test.Tasty
@@ -21,5 +22,6 @@ tests =
     "Tests"
     [ TokenSpec.spec,
       SyntaxSpec.spec,
-      CoreSpec.spec
+      CoreSpec.spec,
+      InterpretSpec.spec
     ]

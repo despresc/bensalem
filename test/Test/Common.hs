@@ -52,3 +52,17 @@ goldWith base suffix name desc act =
   goldenVsString (name <> ": " <> desc) (base <> name <> ".golden") $ do
     t <- T.readFile $ base <> name <> "." <> suffix
     act t
+
+-- | A common simple scheme for golden tests
+goldWith' ::
+  TestName ->
+  TestName ->
+  TestName ->
+  TestName ->
+  TestName ->
+  (Text -> IO LBS.ByteString) ->
+  TestTree
+goldWith' base goldsuffix suffix name desc act =
+  goldenVsString (name <> ": " <> desc) (base <> name <> "." <> goldsuffix) $ do
+    t <- T.readFile $ base <> name <> "." <> suffix
+    act t

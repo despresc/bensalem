@@ -1,0 +1,34 @@
+\#section
+
+\heading{Über die Anzahl der Primzahlen unter einer gegebenen Größe}
+
+\##section
+
+\&p
+  Meinen Dank für die Auszeichnung, welche mir die Akademie durch die Aufnahme
+  unter ihre Correspondenten hat zu Theil werden lassen, glaube ich am besten
+  dadurch zu erkennen zu geben, daß ich von der hierdurch erhaltenen Erlaubniß
+  baldigst Gebrauch mache durch Mittheilung einer Untersuchung über die Häufigkeit
+  der Primzahlen; ein Gegenstand, welcher durch das Interesse, welches
+  \personRef{Gauss} und \personRef{Dirichlet} demselben längere Zeit geschenkt haben,
+  einer solchen Mittheilung vielleicht nicht ganz unwerth erscheint.
+
+\&p
+  Bei dieser Untersuchung diente mir als Ausgangspunkt die von
+  \personRef{Euler} gemachte Bemerkung, daß das Product
+  \&tdmath
+    \`|\prod\frac 1{1 - \frac 1{p^s}} = \sum\frac 1{n^s}\text{,}|`/
+
+\&p
+  \physPage{672} wenn für \timath{p} alle Primzahlen, für \timath{n} alle ganzen
+  Zahlen gesetzt werden. Die Function der complexen Veränderlichen \timath{s},
+  welche durch diese beiden Ausdrücke, so lange sie convergiren, dargestellt wird,
+  bezeichne ich durch \timath{\\zeta(s)}. Beide convergiren nur, so lange der
+  reelle Theil von \timath{s} größer als \timath{1} ist; es läßt sich indeß leicht
+  ein immer gültig bleibender Ausdruck der Function finden. Durch Anwendung der
+  Gleichung
+  \&tdmath
+    \`|∫_0^∞ e^{-nx} x^{s-1} dx = \frac{\Pi(s-1)}{n^s}|`/
+  erhält man zunächst
+  \&tdmath
+    \`|\Pi(s-1)\zeta(s) = ∫_0^∞ \frac{x^{s-1} dx}{e^x - 1}\text{.}|`/
