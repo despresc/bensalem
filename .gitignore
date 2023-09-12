@@ -4,3 +4,7 @@ stack.yaml.lock
 **dist/
 **dist-newstyle/
 **newdist/
+.envrc
+.direnv
+frontend/node_modules
+.svelte-kit/
